@@ -1,6 +1,16 @@
 #!/usr/bin/env python
 
 # -*- coding: utf-8 -*-
+import ipdb as pdb
+import second.core.box_np_ops as box_np_ops
+from second.pytorch.inference import TorchInferenceContext
+import json
+import math
+import numpy as np
+import time
+import os
+import glob
+from pathlib import Path
 import rospy
 from sensor_msgs.msg import PointCloud2
 import sensor_msgs.point_cloud2 as pc2
@@ -15,21 +25,10 @@ import pathlib
 import sys
 path_model = "/home/anshul/es3cap/codes/pointpillars/second.pytorch/"
 sys.path.append(path_model)
-#print sys.path
+# print sys.path
 
-from pathlib import Path
-import glob
-import os
-#print os.getcwd()
-import time
-import numpy as np
-import math
-import json
+# print os.getcwd()
 
-from second.pytorch.inference import TorchInferenceContext
-import second.core.box_np_ops as box_np_ops
-
-import ipdb as pdb
 
 bridge = CvBridge()
 
@@ -48,8 +47,6 @@ def ry_to_rz(ry):
     return angle
 
 
-
-
 # map axes strings to/from tuples of inner axis, parity, repetition, frame
 _AXES2TUPLE = {
     'sxyz': (0, 0, 0, 0), 'sxyx': (0, 0, 1, 0), 'sxzy': (0, 1, 0, 0),
@@ -64,6 +61,8 @@ _AXES2TUPLE = {
 _NEXT_AXIS = [1, 2, 0, 1]
 
 # code from /opt/ros/kinetic/lib/python2.7/dist-packages/tf/transformations.py
+
+
 def quaternion_from_euler(ai, aj, ak, axes='sxyz'):
     """Return quaternion from Euler angles and axis sequence.
 
@@ -121,6 +120,7 @@ def quaternion_from_euler(ai, aj, ak, axes='sxyz'):
 
     return quaternion
 
+
 def kitti_anno_to_corners(info, annos=None):
     rect = info['calib/R0_rect']
     P2 = info['calib/P2']
@@ -144,6 +144,7 @@ def kitti_anno_to_corners(info, annos=None):
         axis=2)
     return boxes_corners, scores, boxes_lidar
 
+
 def remove_low_score(image_anno, thresh):
     img_filtered_annotations = {}
     relevant_annotation_indices = [
@@ -164,7 +165,6 @@ def remove_dontcare(image_anno):
         img_filtered_annotations[key] = (
             image_anno[key][relevant_annotation_indices])
     return img_filtered_annotations
-
 
 
 # def draw_rects(img, bboxes, color=(0,0,255), thickness=1, darken=1, show_gauss = True):
@@ -195,39 +195,36 @@ def remove_dontcare(image_anno):
 #     return added_img
 
 
-
-
-
-
-
-def draw_rects(img, bboxes, color=(0,0,255), thickness=1, darken=1, show_gauss = True):
+def draw_rects(img, bboxes, color=(0, 0, 255), thickness=1, darken=1, show_gauss=True):
     cmap = plt.cm.get_cmap('hsv', 256)
     cmap = np.array([cmap(i) for i in range(256)])[:, :3] * 255
 
     bboxes = bboxes.astype(int)
     # img = image.copy() * darken
-    gauss = np.zeros(img.shape, dtype = img.dtype)
-    temp = np.zeros((img.shape[0],img.shape[1]))
+    gauss = np.zeros(img.shape, dtype=img.dtype)
+    temp = np.zeros((img.shape[0], img.shape[1]))
     for bbox in bboxes:
         xmin, ymin, xmax, ymax = bbox
-        cv2.rectangle(img, (xmin, ymin), (xmax, ymax) , color, thickness, cv2.LINE_AA)
+        cv2.rectangle(img, (xmin, ymin), (xmax, ymax),
+                      color, thickness, cv2.LINE_AA)
 
         if show_gauss:
             w = xmax-xmin
             h = ymax-ymin
-            x0 =(xmax+xmin)/2
-            y0 =(ymax+ymin)/2
+            x0 = (xmax+xmin)/2
+            y0 = (ymax+ymin)/2
             X = np.linspace(xmin, xmax, xmax - xmin, endpoint=False)
             Y = np.linspace(ymin, ymax, ymax - ymin, endpoint=False)
             X, Y = np.meshgrid(X, Y)
             pos = np.vstack([X.ravel(), Y.ravel()]).T
-            new_prob = np.exp(-((pos[:,0] - x0)**2/(0.3*w**2)) - ((pos[:,1] - y0)**2/(0.3*h**2) ))   ############ original function
+            new_prob = np.exp(-((pos[:, 0] - x0)**2/(0.3*w**2)) -
+                              ((pos[:, 1] - y0)**2/(0.3*h**2)))  # original function
             # new_prob = np.exp(-((((pos[:,0] - x0)/w)**4) + ((pos[:,1] - y0)/h)**4 ))
             pos = pos.astype(int)
-            cur_prob = temp[pos[:,1], pos[:,0]]
+            cur_prob = temp[pos[:, 1], pos[:, 0]]
             prob_mask = new_prob < cur_prob
             new_prob[prob_mask] = cur_prob[prob_mask]
-            temp[pos[:,1], pos[:,0]] = new_prob
+            temp[pos[:, 1], pos[:, 0]] = new_prob
             # pdb.set_trace()
     # fig.clear()
     # cs = plt.imshow(temp.T, interpolation='nearest')
@@ -236,17 +233,12 @@ def draw_rects(img, bboxes, color=(0,0,255), thickness=1, darken=1, show_gauss =
 
     # plt.pause(0.01)
     # plt.clf()
-    gauss_color = cmap[(255 * temp.ravel()).astype(int), :] #CHANGED: added clip bcoz pointcloud not filtered
+    # CHANGED: added clip bcoz pointcloud not filtered
+    gauss_color = cmap[(255 * temp.ravel()).astype(int), :]
     gauss_color[temp.ravel() == 0] = 0
-    gauss = gauss_color[:,[2,1,0]].reshape(gauss.shape).astype(img.dtype)
-    added_img = cv2.addWeighted(img,0.7,gauss,0.3,0)
+    gauss = gauss_color[:, [2, 1, 0]].reshape(gauss.shape).astype(img.dtype)
+    added_img = cv2.addWeighted(img, 0.7, gauss, 0.3, 0)
     return added_img
-
-
-
-
-
-
 
 
 class Settings:
@@ -281,17 +273,19 @@ class Settings:
         with open(self._cfg_path, 'r') as f:
             self._settings = json.loads(f.read())
 
+
 class Processor_ROS:
-    def __init__(self, config_path, ckpt_path, label_dir = None):
+    def __init__(self, config_path, ckpt_path, label_dir=None):
         self.points = None
 
-        self.json_setting = Settings(str('/home/anshul/es3cap/codes/pointpillars/' + ".kittiviewerrc"))
+        self.json_setting = Settings(
+            str('/home/anshul/es3cap/codes/pointpillars/' + ".kittiviewerrc"))
         # self.config_path = self.json_setting.get("latest_vxnet_cfg_path", "")
 
         self.config_path = config_path
         self.ckpt_path = ckpt_path
         self.label_dir = label_dir
-        
+
         self.image_info = None
         self.inputs = None
 
@@ -333,7 +327,7 @@ class Processor_ROS:
         annotations['group_ids'] = np.arange(num_gt, dtype=np.int32)
         return annotations
 
-    def get_info(self, idx, data_path, calib = True, extend_matrix=True):
+    def get_info(self, idx, data_path, calib=True, extend_matrix=True):
         label_t = time.time()
         image_info = {'image_idx': idx, 'pointcloud_num_features': 4}
         annotations = None
@@ -350,7 +344,7 @@ class Processor_ROS:
         print('read_bbox', label_te - label_t)
 
         if calib:
-            calib_path = data_path / "calib"/ ('%06d.txt' % idx)
+            calib_path = data_path / "calib" / ('%06d.txt' % idx)
 
             with open(str(calib_path), 'r') as f:
                 lines = f.readlines()
@@ -397,9 +391,10 @@ class Processor_ROS:
             image_info['calib/Tr_velo_to_cam'] = Tr_velo_to_cam
 
             # add image shape info for lidar point cloud preprocessing
-            image_info["img_shape"] = np.array([375, 1242]) # kitti image size: height, width
+            # kitti image size: height, width
+            image_info["img_shape"] = np.array([375, 1242])
         calib_te = time.time()
-        print('read_calib', calib_te -label_te )
+        print('read_calib', calib_te - label_te)
         if annotations is not None:
             image_info['annos'] = annotations
             # self.image_info = image_info
@@ -418,8 +413,6 @@ class Processor_ROS:
         self.inference_ctx.restore(self.ckpt_path)
         print("Load VoxelNet ckpt succeeded.")
 
-
-
     def run(self, idx, data_path, points):
 
         start = time.time()
@@ -434,9 +427,11 @@ class Processor_ROS:
         initial = time.time()
         print("initial_time: ", initial - start)
 
-        points = box_np_ops.remove_outside_points(points, rect, Trv2c, P2, image_shape)
+        points = box_np_ops.remove_outside_points(
+            points, rect, Trv2c, P2, image_shape)
 
-        self.inputs = self.inference_ctx.get_inference_input_dict_ros_2(image_info, points, frustum_pp = True)
+        self.inputs = self.inference_ctx.get_inference_input_dict_ros_2(
+            image_info, points, frustum_pp=True)
 
         preprocess = time.time()
         print("preprocess_time: ",  preprocess - initial)
@@ -450,12 +445,12 @@ class Processor_ROS:
         print("total_time: ", inference - start)
         results = remove_low_score(results, 0.5)
 
-        dt_boxes_corners, scores, dt_box_lidar = kitti_anno_to_corners(image_info, results)
+        dt_boxes_corners, scores, dt_box_lidar = kitti_anno_to_corners(
+            image_info, results)
 
         # print("dt_box_lidar: ", dt_box_lidar)
-        
-        return dt_boxes_corners, scores, dt_box_lidar
 
+        return dt_boxes_corners, scores, dt_box_lidar
 
 
 def KittiDataset(root, set, class_names):
@@ -466,7 +461,7 @@ def KittiDataset(root, set, class_names):
     # calib_path = data_path / "calib"
     # label_path = data_path / "label_2"
 
-    list = os.listdir(lidar_path) # dir is your directory path
+    list = os.listdir(lidar_path)  # dir is your directory path
 
     for idx in range(50, len(list)):
         arr_bbox = BoundingBoxArray()
@@ -479,24 +474,25 @@ def KittiDataset(root, set, class_names):
 
         # start processing
 
-        dt_boxes_corners, scores, dt_box_lidar = proc.run(idx, data_path, cloud)
+        dt_boxes_corners, scores, dt_box_lidar = proc.run(
+            idx, data_path, cloud)
 
-        processed_cloud  =  proc.inputs['points'][0]
+        processed_cloud = proc.inputs['points'][0]
         if len(processed_cloud[0]) > 4:
-            processed_cloud = processed_cloud[:,[0,1,2,-1]]
-            processed_cloud[:,2] += 1.7
-        publish_velo_modified(processed_cloud, "kitti/base_link") # Check by publising original point cloud
+            processed_cloud = processed_cloud[:, [0, 1, 2, -1]]
+            processed_cloud[:, 2] += 1.7
+        # Check by publising original point cloud
+        publish_velo_modified(processed_cloud, "kitti/base_link")
 
-        cloud[:,2] += 1.7
-        publish_velo(cloud, "kitti/base_link") # Check by publising original point cloud
-
-
-
+        cloud[:, 2] += 1.7
+        # Check by publising original point cloud
+        publish_velo(cloud, "kitti/base_link")
 
         annos = proc.image_info['annos']
         ref_boxes = annos["bbox"]
         ref_names = annos["name"]
-        ref_boxes_mask = np.array([n in class_names for n in ref_names], dtype=np.bool_)
+        ref_boxes_mask = np.array(
+            [n in class_names for n in ref_names], dtype=np.bool_)
         image = draw_rects(image, ref_boxes[ref_boxes_mask])
 
         # Code for gaussian goes here
@@ -514,14 +510,15 @@ def KittiDataset(root, set, class_names):
 
                 rotz = ry_to_rz(float(dt_box_lidar[i][6]))
 
-                q = quaternion_from_euler(0,0, rotz)
+                q = quaternion_from_euler(0, 0, rotz)
                 bbox.pose.orientation.x = q[0]
                 bbox.pose.orientation.y = q[1]
                 bbox.pose.orientation.z = q[2]
                 bbox.pose.orientation.w = q[3]
                 bbox.pose.position.x = float(dt_box_lidar[i][0])
                 bbox.pose.position.y = float(dt_box_lidar[i][1])
-                bbox.pose.position.z = float(dt_box_lidar[i][2]) + 1.7 * 1.5 ## added 1.7 to compensate height of lidar
+                # added 1.7 to compensate height of lidar
+                bbox.pose.position.z = float(dt_box_lidar[i][2]) + 1.7 * 1.5
                 bbox.dimensions.x = float(dt_box_lidar[i][4])
                 bbox.dimensions.y = float(dt_box_lidar[i][3])
                 bbox.dimensions.z = float(dt_box_lidar[i][5])
@@ -538,17 +535,10 @@ def KittiDataset(root, set, class_names):
             #           arr_bbox.boxes[i].dimensions.x,arr_bbox.boxes[i].dimensions.y,arr_bbox.boxes[i].dimensions.z))
             #  publish to /voxelnet_arr_bbox
             pub_arr_bbox.publish(arr_bbox)
-            #arr_bbox.boxes.clear()
+            # arr_bbox.boxes.clear()
             arr_bbox.boxes = []
 
         pdb.set_trace()
-
-
-
-
-
-
-
 
 
 #  publishing function for DEBUG
@@ -559,58 +549,57 @@ def publish_velo_modified(cloud, frame_id):
 
     # point cloud segments
     msg_segment = pc2.create_cloud(header=header,
-                                    fields=_make_point_field(4), # 4 PointFields as channel description
-                                    points=cloud)
+                                   # 4 PointFields as channel description
+                                   fields=_make_point_field(4),
+                                   points=cloud)
 
     #  publish to /velodyne_points_modified
-    pub_velo.publish(msg_segment) #  DEBUG
-
-
-
-
-
-
+    pub_velo.publish(msg_segment)  # DEBUG
 
 
 #  publishing function for DEBUG
 def publish_velo(cloud, frame_id):
-	header = Header()
-	header.stamp = rospy.Time()
-	header.frame_id = frame_id
+    header = Header()
+    header.stamp = rospy.Time()
+    header.frame_id = frame_id
 
-	# point cloud segments
-	msg_segment = pc2.create_cloud(header=header,
-									fields=_make_point_field(4), # 4 PointFields as channel description
-									points=cloud)
+    # point cloud segments
+    msg_segment = pc2.create_cloud(header=header,
+                                   # 4 PointFields as channel description
+                                   fields=_make_point_field(4),
+                                   points=cloud)
 
-	#  publish to /velodyne_points_modified
-	pub_velo_ori.publish(msg_segment) #  DEBUG
+    #  publish to /velodyne_points_modified
+    pub_velo_ori.publish(msg_segment)  # DEBUG
 
 #  code from SqueezeSeg (inspired from Durant35)
+
+
 def hv_in_range(x, y, z, fov, fov_type='h'):
-	"""
-	Extract filtered in-range velodyne coordinates based on azimuth & elevation angle limit
+    """
+    Extract filtered in-range velodyne coordinates based on azimuth & elevation angle limit
 
-	Args:
-	`x`:velodyne points x array
-	`y`:velodyne points y array
-	`z`:velodyne points z array
-	`fov`:a two element list, e.g.[-45,45]
-	`fov_type`:the fov type, could be `h` or 'v',defualt in `h`
+    Args:
+    `x`:velodyne points x array
+    `y`:velodyne points y array
+    `z`:velodyne points z array
+    `fov`:a two element list, e.g.[-45,45]
+    `fov_type`:the fov type, could be `h` or 'v',defualt in `h`
 
-	Return:
-	`cond`:condition of points within fov or not
+    Return:
+    `cond`:condition of points within fov or not
 
-	Raise:
-	`NameError`:"fov type must be set between 'h' and 'v' "
-	"""
-	d = np.sqrt(x ** 2 + y ** 2 + z ** 2)
-	if fov_type == 'h':
-		return np.logical_and(np.arctan2(y, x) > (-fov[1] * np.pi/180), np.arctan2(y, x) < (-fov[0] * np.pi/180))
-	elif fov_type == 'v':
-		return np.logical_and(np.arctan2(z, d) < (fov[1] * np.pi / 180), np.arctan2(z, d) > (fov[0] * np.pi / 180))
-	else:
-		raise NameError("fov type must be set between 'h' and 'v' ")
+    Raise:
+    `NameError`:"fov type must be set between 'h' and 'v' "
+    """
+    d = np.sqrt(x ** 2 + y ** 2 + z ** 2)
+    if fov_type == 'h':
+        return np.logical_and(np.arctan2(y, x) > (-fov[1] * np.pi/180), np.arctan2(y, x) < (-fov[0] * np.pi/180))
+    elif fov_type == 'v':
+        return np.logical_and(np.arctan2(z, d) < (fov[1] * np.pi / 180), np.arctan2(z, d) > (fov[0] * np.pi / 180))
+    else:
+        raise NameError("fov type must be set between 'h' and 'v' ")
+
 
 def _make_point_field(num_field):
     msg_pf1 = pc2.PointField()
@@ -648,6 +637,7 @@ def _make_point_field(num_field):
 
     return [msg_pf1, msg_pf2, msg_pf3, msg_pf4, msg_pf5]
 
+
 if __name__ == '__main__':
     global proc
 
@@ -660,7 +650,7 @@ if __name__ == '__main__':
     # class_names = ['Pedestrian', 'Cyclist']
     class_names = ['Car']
 
-    # label_dir = Path('/home/anshul/es3cap/kitti_data/testing/ecp_results/data')
+    # label_dir = Path('/kitti/testing/ecp_results/data')
     label_dir = None
 
     proc = Processor_ROS(config_path, ckpt_path, label_dir)
@@ -670,9 +660,12 @@ if __name__ == '__main__':
     rospy.init_node('second_ros_node')
 
     # publisher
-    pub_velo = rospy.Publisher("velodyne_points_modified", PointCloud2, queue_size=1)
-    pub_velo_ori = rospy.Publisher("velodyne_points", PointCloud2, queue_size=1)
+    pub_velo = rospy.Publisher(
+        "velodyne_points_modified", PointCloud2, queue_size=1)
+    pub_velo_ori = rospy.Publisher(
+        "velodyne_points", PointCloud2, queue_size=1)
     pub_img = rospy.Publisher("kitti_img", Image, queue_size=1)
-    pub_arr_bbox = rospy.Publisher("second_arr_bbox", BoundingBoxArray, queue_size=10)
+    pub_arr_bbox = rospy.Publisher(
+        "second_arr_bbox", BoundingBoxArray, queue_size=10)
 
-    KittiDataset(root = "/home/anshul/es3cap/kitti_data/", set = "training", class_names = class_names)
+    KittiDataset(root="/kitti/", set="training", class_names=class_names)

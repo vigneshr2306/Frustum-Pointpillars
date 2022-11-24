@@ -1,6 +1,15 @@
 #!/usr/bin/env python
 
 # -*- coding: utf-8 -*-
+import second.core.box_np_ops as box_np_ops
+from second.pytorch.inference import TorchInferenceContext
+import json
+import math
+import numpy as np
+import time
+import os
+import glob
+from pathlib import Path
 import rospy
 from sensor_msgs.msg import PointCloud2
 import sensor_msgs.point_cloud2 as pc2
@@ -10,19 +19,10 @@ from jsk_recognition_msgs.msg import BoundingBox, BoundingBoxArray
 import sys
 path_model = "/home/anshul/es3cap/codes/pointpillars/second.pytorch/"
 sys.path.append(path_model)
-#print sys.path
+# print sys.path
 
-from pathlib import Path
-import glob
-import os
-#print os.getcwd()
-import time
-import numpy as np
-import math
-import json
+# print os.getcwd()
 
-from second.pytorch.inference import TorchInferenceContext
-import second.core.box_np_ops as box_np_ops
 
 # map axes strings to/from tuples of inner axis, parity, repetition, frame
 _AXES2TUPLE = {
@@ -38,6 +38,8 @@ _AXES2TUPLE = {
 _NEXT_AXIS = [1, 2, 0, 1]
 
 # code from /opt/ros/kinetic/lib/python2.7/dist-packages/tf/transformations.py
+
+
 def quaternion_from_euler(ai, aj, ak, axes='sxyz'):
     """Return quaternion from Euler angles and axis sequence.
 
@@ -95,6 +97,7 @@ def quaternion_from_euler(ai, aj, ak, axes='sxyz'):
 
     return quaternion
 
+
 def kitti_anno_to_corners(info, annos=None):
     rect = info['calib/R0_rect']
     P2 = info['calib/P2']
@@ -118,6 +121,7 @@ def kitti_anno_to_corners(info, annos=None):
         axis=2)
     return boxes_corners, scores, boxes_lidar
 
+
 def remove_low_score(image_anno, thresh):
     img_filtered_annotations = {}
     relevant_annotation_indices = [
@@ -127,6 +131,7 @@ def remove_low_score(image_anno, thresh):
         img_filtered_annotations[key] = (
             image_anno[key][relevant_annotation_indices])
     return img_filtered_annotations
+
 
 class Settings:
     def __init__(self, cfg_path):
@@ -160,16 +165,18 @@ class Settings:
         with open(self._cfg_path, 'r') as f:
             self._settings = json.loads(f.read())
 
+
 class Processor_ROS:
     def __init__(self, calib_path, config_path, ckpt_path):
         self.points = None
 
-        self.json_setting = Settings(str('/home/anshul/es3cap/codes/pointpillars/' + ".kittiviewerrc"))
+        self.json_setting = Settings(
+            str('/home/anshul/es3cap/codes/pointpillars/' + ".kittiviewerrc"))
         # self.config_path = self.json_setting.get("latest_vxnet_cfg_path", "")
         self.calib_path = calib_path
         self.config_path = config_path
         self.ckpt_path = ckpt_path
-        
+
         self.calib_info = None
         self.inputs = None
 
@@ -189,9 +196,9 @@ class Processor_ROS:
         self.points = points.reshape([-1, num_features])
 
         self.points = box_np_ops.remove_outside_points(
-                    self.points, rect, Trv2c, P2, image_shape)
+            self.points, rect, Trv2c, P2, image_shape)
         # print(self.points)
-        
+
         [results] = self.inference_vxnet()
 
         results = remove_low_score(results, 0.5)
@@ -200,7 +207,7 @@ class Processor_ROS:
             self.calib_info, results)
 
         # print("dt_box_lidar: ", dt_box_lidar)
-        
+
         return dt_boxes_corners, scores, dt_box_lidar
 
     def _extend_matrix(self, mat):
@@ -211,7 +218,7 @@ class Processor_ROS:
                    extend_matrix=True):
         # print(self.calib_path)
         print("Start read_calib...")
-        calib_info= {'calib_path': self.calib_path}
+        calib_info = {'calib_path': self.calib_path}
         with open(self.calib_path, 'r') as f:
             lines = f.readlines()
         P0 = np.array(
@@ -257,7 +264,8 @@ class Processor_ROS:
         calib_info['calib/Tr_velo_to_cam'] = Tr_velo_to_cam
         # calib_info['calib/Tr_imu_to_velo'] = Tr_imu_to_velo
         # add image shape info for lidar point cloud preprocessing
-        calib_info["img_shape"] = np.array([375, 1242]) # kitti image size: height, width
+        # kitti image size: height, width
+        calib_info["img_shape"] = np.array([375, 1242])
         self.calib_info = calib_info
         print("Read calib file succeeded.")
 
@@ -292,117 +300,126 @@ class Processor_ROS:
         return det_annos
 
 #  /velodyne_points topic's subscriber callback function
+
+
 def velo_callback(msg):
-	global proc
+    global proc
 
-	arr_bbox = BoundingBoxArray()
+    arr_bbox = BoundingBoxArray()
 
-	pcl_msg = pc2.read_points(msg, skip_nans=False, field_names=("x", "y", "z","intensity","ring"))
-	np_p = np.array(list(pcl_msg), dtype=np.float32)
-	# print("np_p shape: ", np_p.shape)
-	#np_p = np.delete(np_p, -1, 1)  #  delete "ring" field
-    
+    pcl_msg = pc2.read_points(msg, skip_nans=False, field_names=(
+        "x", "y", "z", "intensity", "ring"))
+    np_p = np.array(list(pcl_msg), dtype=np.float32)
+    # print("np_p shape: ", np_p.shape)
+    # np_p = np.delete(np_p, -1, 1)  #  delete "ring" field
+
     # convert to xyzi point cloud
-	x = np_p[:, 0].reshape(-1)
-	y = np_p[:, 1].reshape(-1)
-	z = np_p[:, 2].reshape(-1)
-	if np_p.shape[1] == 4: # if intensity field exists
-		i = np_p[:, 3].reshape(-1)
-	else:
-		i = np.zeros((np_p.shape[0], 1)).reshape(-1)
-	cloud = np.stack((x, y, z, i)).T
+    x = np_p[:, 0].reshape(-1)
+    y = np_p[:, 1].reshape(-1)
+    z = np_p[:, 2].reshape(-1)
+    if np_p.shape[1] == 4:  # if intensity field exists
+        i = np_p[:, 3].reshape(-1)
+    else:
+        i = np.zeros((np_p.shape[0], 1)).reshape(-1)
+    cloud = np.stack((x, y, z, i)).T
     # start processing
-	dt_boxes_corners, scores, dt_box_lidar = proc.run(cloud)
-	# print(scores)
+    dt_boxes_corners, scores, dt_box_lidar = proc.run(cloud)
+    # print(scores)
 
     # # field of view cut
-	# cond = hv_in_range(x=np_p[:, 0],
-	# 				   y=np_p[:, 1],
-	# 				   z=np_p[:, 2],
-	# 				   fov=[-45, 45],
-	# 				   fov_type='h')
-	# cloud_ranged = cloud[cond]
-	# # print(cond.shape, np_p.shape, cloud.shape)
+    # cond = hv_in_range(x=np_p[:, 0],
+    # 				   y=np_p[:, 1],
+    # 				   z=np_p[:, 2],
+    # 				   fov=[-45, 45],
+    # 				   fov_type='h')
+    # cloud_ranged = cloud[cond]
+    # # print(cond.shape, np_p.shape, cloud.shape)
 
-	#  publish to /velodyne_poitns_modified
-	# publish_test(cloud_ranged, msg.header.frame_id)
-	publish_test(proc.inputs['points'][0], msg.header.frame_id)
+    #  publish to /velodyne_poitns_modified
+    # publish_test(cloud_ranged, msg.header.frame_id)
+    publish_test(proc.inputs['points'][0], msg.header.frame_id)
 
-	# process results
-	if scores.size != 0:
-		# print('Number of detections: ', results['name'].size)
-		for i in range(scores.size):
-			bbox = BoundingBox()
+    # process results
+    if scores.size != 0:
+        # print('Number of detections: ', results['name'].size)
+        for i in range(scores.size):
+            bbox = BoundingBox()
 
-			bbox.header.frame_id = msg.header.frame_id
-			# bbox.header.stamp = rospy.Time.now()
+            bbox.header.frame_id = msg.header.frame_id
+            # bbox.header.stamp = rospy.Time.now()
 
-			q = quaternion_from_euler(0,0,-float(dt_box_lidar[i][6]))
-			bbox.pose.orientation.x = q[0]
-			bbox.pose.orientation.y = q[1]
-			bbox.pose.orientation.z = q[2]
-			bbox.pose.orientation.w = q[3]
-			bbox.pose.position.x = float(dt_box_lidar[i][0])
-			bbox.pose.position.y = float(dt_box_lidar[i][1])
-			bbox.pose.position.z = float(dt_box_lidar[i][2])
-			bbox.dimensions.x = float(dt_box_lidar[i][3])
-			bbox.dimensions.y = float(dt_box_lidar[i][4])
-			bbox.dimensions.z = float(dt_box_lidar[i][5])
+            q = quaternion_from_euler(0, 0, -float(dt_box_lidar[i][6]))
+            bbox.pose.orientation.x = q[0]
+            bbox.pose.orientation.y = q[1]
+            bbox.pose.orientation.z = q[2]
+            bbox.pose.orientation.w = q[3]
+            bbox.pose.position.x = float(dt_box_lidar[i][0])
+            bbox.pose.position.y = float(dt_box_lidar[i][1])
+            bbox.pose.position.z = float(dt_box_lidar[i][2])
+            bbox.dimensions.x = float(dt_box_lidar[i][3])
+            bbox.dimensions.y = float(dt_box_lidar[i][4])
+            bbox.dimensions.z = float(dt_box_lidar[i][5])
 
-			arr_bbox.boxes.append(bbox)
+            arr_bbox.boxes.append(bbox)
 
-	arr_bbox.header.frame_id = msg.header.frame_id
-	# arr_bbox.header.stamp = rospy.Time.now()
-	# print("arr_bbox.boxes.size() : {} ".format(len(arr_bbox.boxes)))
-	if len(arr_bbox.boxes) is not 0:
-		# for i in range(0, len(arr_bbox.boxes)):
-		# 	print("[+] [x,y,z,dx,dy,dz] : {}, {}, {}, {}, {}, {}".\
+    arr_bbox.header.frame_id = msg.header.frame_id
+    # arr_bbox.header.stamp = rospy.Time.now()
+    # print("arr_bbox.boxes.size() : {} ".format(len(arr_bbox.boxes)))
+    if len(arr_bbox.boxes) is not 0:
+        # for i in range(0, len(arr_bbox.boxes)):
+        # 	print("[+] [x,y,z,dx,dy,dz] : {}, {}, {}, {}, {}, {}".\
         #           format(arr_bbox.boxes[i].pose.position.x,arr_bbox.boxes[i].pose.position.y,arr_bbox.boxes[i].pose.position.z,\
         #           arr_bbox.boxes[i].dimensions.x,arr_bbox.boxes[i].dimensions.y,arr_bbox.boxes[i].dimensions.z))
-		#  publish to /voxelnet_arr_bbox
-		pub_arr_bbox.publish(arr_bbox)
-		#arr_bbox.boxes.clear()
-		arr_bbox.boxes = []
+        #  publish to /voxelnet_arr_bbox
+        pub_arr_bbox.publish(arr_bbox)
+        # arr_bbox.boxes.clear()
+        arr_bbox.boxes = []
 
 #  publishing function for DEBUG
+
+
 def publish_test(cloud, frame_id):
-	header = Header()
-	header.stamp = rospy.Time()
-	header.frame_id = frame_id
+    header = Header()
+    header.stamp = rospy.Time()
+    header.frame_id = frame_id
 
-	# point cloud segments
-	msg_segment = pc2.create_cloud(header=header,
-									fields=_make_point_field(4), # 4 PointFields as channel description
-									points=cloud)
+    # point cloud segments
+    msg_segment = pc2.create_cloud(header=header,
+                                   # 4 PointFields as channel description
+                                   fields=_make_point_field(4),
+                                   points=cloud)
 
-	#  publish to /velodyne_points_modified
-	pub_velo.publish(msg_segment) #  DEBUG
+    #  publish to /velodyne_points_modified
+    pub_velo.publish(msg_segment)  # DEBUG
 
 #  code from SqueezeSeg (inspired from Durant35)
+
+
 def hv_in_range(x, y, z, fov, fov_type='h'):
-	"""
-	Extract filtered in-range velodyne coordinates based on azimuth & elevation angle limit
+    """
+    Extract filtered in-range velodyne coordinates based on azimuth & elevation angle limit
 
-	Args:
-	`x`:velodyne points x array
-	`y`:velodyne points y array
-	`z`:velodyne points z array
-	`fov`:a two element list, e.g.[-45,45]
-	`fov_type`:the fov type, could be `h` or 'v',defualt in `h`
+    Args:
+    `x`:velodyne points x array
+    `y`:velodyne points y array
+    `z`:velodyne points z array
+    `fov`:a two element list, e.g.[-45,45]
+    `fov_type`:the fov type, could be `h` or 'v',defualt in `h`
 
-	Return:
-	`cond`:condition of points within fov or not
+    Return:
+    `cond`:condition of points within fov or not
 
-	Raise:
-	`NameError`:"fov type must be set between 'h' and 'v' "
-	"""
-	d = np.sqrt(x ** 2 + y ** 2 + z ** 2)
-	if fov_type == 'h':
-		return np.logical_and(np.arctan2(y, x) > (-fov[1] * np.pi/180), np.arctan2(y, x) < (-fov[0] * np.pi/180))
-	elif fov_type == 'v':
-		return np.logical_and(np.arctan2(z, d) < (fov[1] * np.pi / 180), np.arctan2(z, d) > (fov[0] * np.pi / 180))
-	else:
-		raise NameError("fov type must be set between 'h' and 'v' ")
+    Raise:
+    `NameError`:"fov type must be set between 'h' and 'v' "
+    """
+    d = np.sqrt(x ** 2 + y ** 2 + z ** 2)
+    if fov_type == 'h':
+        return np.logical_and(np.arctan2(y, x) > (-fov[1] * np.pi/180), np.arctan2(y, x) < (-fov[0] * np.pi/180))
+    elif fov_type == 'v':
+        return np.logical_and(np.arctan2(z, d) < (fov[1] * np.pi / 180), np.arctan2(z, d) > (fov[0] * np.pi / 180))
+    else:
+        raise NameError("fov type must be set between 'h' and 'v' ")
+
 
 def _make_point_field(num_field):
     msg_pf1 = pc2.PointField()
@@ -440,13 +457,14 @@ def _make_point_field(num_field):
 
     return [msg_pf1, msg_pf2, msg_pf3, msg_pf4, msg_pf5]
 
+
 if __name__ == '__main__':
     global proc
 
     #save_model_dir = os.path.join('../voxelnet/save_model', args.tag)
     # save_model_dir = os.path.join(path_model + '/save_model', 'pre_trained_car')
     # initializing second
-    calib_path = '/home/anshul/es3cap/kitti_data/training/calib/000000.txt'
+    calib_path = '/kitti/training/calib/000000.txt'
     config_path = '/home/anshul/es3cap/my_codes/frustum_pp/second.pytorch/second/configs/pointpillars/car/xyres_16.proto'
     ckpt_path = '/home/anshul/es3cap/my_codes/frustum_pp/second.pytorch/second/ckpt/rand_frustum_pp_car/voxelnet-519680.tckpt'
     proc = Processor_ROS(calib_path, config_path, ckpt_path)
@@ -457,11 +475,14 @@ if __name__ == '__main__':
 
     # subscriber
     # sub_ = rospy.Subscriber("velodyne", PointCloud2, velo_callback, queue_size=1)
-    sub_ = rospy.Subscriber("/kitti/velo/pointcloud", PointCloud2, velo_callback, queue_size=1)
+    sub_ = rospy.Subscriber("/kitti/velo/pointcloud",
+                            PointCloud2, velo_callback, queue_size=1)
 
     # publisher
-    pub_velo = rospy.Publisher("velodyne_points_modified", PointCloud2, queue_size=1)
-    pub_arr_bbox = rospy.Publisher("second_arr_bbox", BoundingBoxArray, queue_size=10)
+    pub_velo = rospy.Publisher(
+        "velodyne_points_modified", PointCloud2, queue_size=1)
+    pub_arr_bbox = rospy.Publisher(
+        "second_arr_bbox", BoundingBoxArray, queue_size=10)
     # pub_bbox = rospy.Publisher("voxelnet_bbox", BoundingBox, queue_size=1)
 
     print("[+] second_ros_node has started!")

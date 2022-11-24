@@ -1,25 +1,24 @@
 #!/usr/bin/env python
 
 # -*- coding: utf-8 -*-
+import ipdb as pdb
+from second.utils.progress_bar import ProgressBar
+import second.core.box_np_ops as box_np_ops
+from second.pytorch.inference import TorchInferenceContext
+import json
+import math
+import numpy as np
+import time
+import os
+import glob
+from pathlib import Path
 import pathlib
 import sys
-path_model = "/home/anshul/es3cap/codes/pointpillars/second.pytorch/"
+path_model = "/Frustum-Pointpillars"
 sys.path.append(path_model)
-#print sys.path
+# print sys.path
 
-from pathlib import Path
-import glob
-import os
-#print os.getcwd()
-import time
-import numpy as np
-import math
-import json
-
-from second.pytorch.inference import TorchInferenceContext
-import second.core.box_np_ops as box_np_ops
-from second.utils.progress_bar import ProgressBar
-import ipdb as pdb
+# print os.getcwd()
 
 
 # map axes strings to/from tuples of inner axis, parity, repetition, frame
@@ -34,7 +33,6 @@ _AXES2TUPLE = {
     'rzxz': (2, 0, 1, 1), 'rxyz': (2, 1, 0, 1), 'rzyz': (2, 1, 1, 1)}
 # axis sequences for Euler angles
 _NEXT_AXIS = [1, 2, 0, 1]
-
 
 
 def remove_low_score(image_anno, thresh):
@@ -57,7 +55,6 @@ def remove_dontcare(image_anno):
         img_filtered_annotations[key] = (
             image_anno[key][relevant_annotation_indices])
     return img_filtered_annotations
-
 
 
 class Settings:
@@ -92,17 +89,19 @@ class Settings:
         with open(self._cfg_path, 'r') as f:
             self._settings = json.loads(f.read())
 
+
 class Processor_ROS:
     def __init__(self, config_path, ckpt_path, result_path, class_names):
         self.points = None
 
-        self.json_setting = Settings(str('/home/anshul/es3cap/codes/pointpillars/' + ".kittiviewerrc"))
+        self.json_setting = Settings(
+            str('/home/anshul/es3cap/codes/pointpillars/' + ".kittiviewerrc"))
         # self.config_path = self.json_setting.get("latest_vxnet_cfg_path", "")
 
         self.config_path = config_path
         self.ckpt_path = ckpt_path
         self.result_path = result_path
-        
+
         self.image_info = None
         self.inputs = None
 
@@ -145,7 +144,7 @@ class Processor_ROS:
         annotations['group_ids'] = np.arange(num_gt, dtype=np.int32)
         return annotations
 
-    def get_info(self, idx, data_path, label_info =True, calib = True, extend_matrix=True):
+    def get_info(self, idx, data_path, label_info=True, calib=True, extend_matrix=True):
 
         image_info = {'image_idx': idx, 'pointcloud_num_features': 4}
         annotations = None
@@ -157,7 +156,7 @@ class Processor_ROS:
             annotations = remove_dontcare(annotations)
 
         if calib:
-            calib_path = data_path / "calib"/ ('%06d.txt' % idx)
+            calib_path = data_path / "calib" / ('%06d.txt' % idx)
 
             with open(str(calib_path), 'r') as f:
                 lines = f.readlines()
@@ -204,7 +203,8 @@ class Processor_ROS:
             image_info['calib/Tr_velo_to_cam'] = Tr_velo_to_cam
 
             # add image shape info for lidar point cloud preprocessing
-            image_info["img_shape"] = np.array([375, 1242]) # kitti image size: height, width
+            # kitti image size: height, width
+            image_info["img_shape"] = np.array([375, 1242])
         if annotations is not None:
             image_info['annos'] = annotations
             # self.image_info = image_info
@@ -224,8 +224,6 @@ class Processor_ROS:
         self.inference_ctx.restore(self.ckpt_path)
         print("Load VoxelNet ckpt succeeded.")
 
-
-
     def run(self, idx, data_path, points):
 
         image_info = self.get_info(idx, data_path)
@@ -236,21 +234,23 @@ class Processor_ROS:
 
         annos = image_info['annos']
         ref_names = annos["name"]
-        ref_boxes_mask = np.array([n in self.class_names for n in ref_names], dtype=np.bool_)
+        ref_boxes_mask = np.array(
+            [n in self.class_names for n in ref_names], dtype=np.bool_)
         if ref_boxes_mask.any() is not None:
 
-            points = box_np_ops.remove_outside_points(points, rect, Trv2c, P2, image_shape)
+            points = box_np_ops.remove_outside_points(
+                points, rect, Trv2c, P2, image_shape)
 
-            self.inputs = self.inference_ctx.get_inference_input_dict_ros_2(image_info, points, frustum_pp = True, add_points_to_example = False)
+            self.inputs = self.inference_ctx.get_inference_input_dict_ros_2(
+                image_info, points, frustum_pp=True, add_points_to_example=False)
 
             with self.inference_ctx.ctx():
                 self.inference_ctx.inference(self.inputs)
         else:
-            print('creating empty file %06d.txt'% idx)
+            print('creating empty file %06d.txt' % idx)
             file_name = self.result_path + '/' + '%06d.txt' % idx
             f = open(file_name, 'a+')  # open file in append mode
             f.close()
-
 
 
 def KittiDataset(root, set):
@@ -261,7 +261,7 @@ def KittiDataset(root, set):
     # calib_path = data_path / "calib"
     # label_path = data_path / "label_2"
 
-    list = os.listdir(lidar_path) # dir is your directory path
+    list = os.listdir(lidar_path)  # dir is your directory path
     prog_bar = ProgressBar()
     prog_bar.start(len(list))
     for idx in range(len(list)):
@@ -278,24 +278,17 @@ def KittiDataset(root, set):
         prog_bar.print_bar()
 
 
-
-
-
-
-
-
-
 if __name__ == '__main__':
     global proc
 
     # initializing Pointpillars
-    config_path = '/home/anshul/es3cap/my_codes/frustum_pp/second.pytorch/second/configs/pointpillars/ped_cycle/xyres_16.proto'
-    ckpt_path = '/home/anshul/es3cap/my_codes/frustum_pp/second.pytorch/second/ckpt/frustum_pp_ped/voxelnet-261559.tckpt'
-    result_path = "/home/anshul/results"
+    config_path = 'configs/pointpillars/car/xyres_16.proto'
+    ckpt_path = '/ckpt/frustum_pp_ped/voxelnet-261559.tckpt'
+    result_path = "/results"
     class_names = ['Pedestrian']
     # config_path = '/home/anshul/es3cap/my_codes/frustum_pp/second.pytorch/second/configs/pointpillars/car/xyres_16.proto'
     # ckpt_path = '/home/anshul/es3cap/my_codes/frustum_pp/second.pytorch/second/ckpt/frustum_pp_car/voxelnet-271305.tckpt'
     proc = Processor_ROS(config_path, ckpt_path, result_path, class_names)
     proc.initialize()
 
-    KittiDataset(root = "/home/anshul/es3cap/kitti_data/", set = "training")
+    KittiDataset(root="/kitti", set="training")
