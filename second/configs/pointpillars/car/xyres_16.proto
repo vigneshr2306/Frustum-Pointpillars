@@ -114,7 +114,7 @@ train_input_reader: {
   groundtruth_points_drop_percentage: 0.0
   groundtruth_drop_max_keep_points: 15
   database_sampler {
-    database_info_path: "/kitti/pp_data/kitti_dbinfos_train.pkl"
+    database_info_path: "/kitti/kitti_dbinfos_train.pkl"
     sample_groups {
       name_to_max_num {
         key: "Car"
@@ -140,7 +140,7 @@ train_input_reader: {
 
   remove_unknown_examples: false
   remove_environment: false
-  kitti_info_path: "/kitti/pp_data/kitti_infos_train.pkl"
+  kitti_info_path: "/kitti/kitti_infos_train.pkl"
   kitti_root_path: "/kitti/"
 }
 
