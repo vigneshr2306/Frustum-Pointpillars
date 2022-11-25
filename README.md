@@ -1,5 +1,5 @@
 # Frustum-PointPillars: A Multi-Stage Approach for 3D Object Detection using RGB Camera and LiDAR
-
+ [blog](https://console.paperspace.com/github/gradient-ai/YOLOv7-basketball/NBA.ipynb?file=%2Ftrain.py)
 
 **Authors: Anshul Paigwar, David Sierra-Gonzalez, Ozgur Erkent, Christian Laugier**
 
