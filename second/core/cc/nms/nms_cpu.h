@@ -1,5 +1,6 @@
 #ifndef NMS_CPU_H
 #define NMS_CPU_H
+#include <boost/geometry/geometries/geometries.hpp>
 #include <pybind11/pybind11.h>
 // must include pybind11/stl.h if using containers in STL in arguments.
 #include <pybind11/stl.h>
@@ -85,9 +86,9 @@ std::vector<int> rotate_non_max_suppression_cpu(
     std::vector<int> keep;
     int i, j;
 
-    namespace bg = boost::geometry;
-    typedef bg::model::point<DType, 2, bg::cs::cartesian> point_t;
-    typedef bg::model::polygon<point_t> polygon_t;
+    //namespace bg = boost::geometry;
+    typedef boost::geometry::model::point<DType, 2, bg::cs::cartesian> point_t;
+    typedef boost::geometry::model::polygon<point_t> polygon_t;
     polygon_t poly, qpoly;
     std::vector<polygon_t> poly_inter, poly_union;
     DType inter_area, union_area, overlap;
@@ -105,17 +106,17 @@ std::vector<int> rotate_non_max_suppression_cpu(
                 continue;
             // std::cout << "pre_poly" << std::endl;
             try {
-                bg::append(poly, point_t(box_corners_r(i, 0, 0), box_corners_r(i, 0, 1)));
-                bg::append(poly, point_t(box_corners_r(i, 1, 0), box_corners_r(i, 1, 1)));
-                bg::append(poly, point_t(box_corners_r(i, 2, 0), box_corners_r(i, 2, 1)));
-                bg::append(poly, point_t(box_corners_r(i, 3, 0), box_corners_r(i, 3, 1)));
-                bg::append(poly, point_t(box_corners_r(i, 0, 0), box_corners_r(i, 0, 1)));
-                bg::append(qpoly, point_t(box_corners_r(j, 0, 0), box_corners_r(j, 0, 1)));
-                bg::append(qpoly, point_t(box_corners_r(j, 1, 0), box_corners_r(j, 1, 1)));
-                bg::append(qpoly, point_t(box_corners_r(j, 2, 0), box_corners_r(j, 2, 1)));
-                bg::append(qpoly, point_t(box_corners_r(j, 3, 0), box_corners_r(j, 3, 1)));
-                bg::append(qpoly, point_t(box_corners_r(j, 0, 0), box_corners_r(j, 0, 1)));
-                bg::intersection(poly, qpoly, poly_inter);
+                boost::geometry::append(poly, point_t(box_corners_r(i, 0, 0), box_corners_r(i, 0, 1)));
+                boost::geometry::append(poly, point_t(box_corners_r(i, 1, 0), box_corners_r(i, 1, 1)));
+                boost::geometry::append(poly, point_t(box_corners_r(i, 2, 0), box_corners_r(i, 2, 1)));
+                boost::geometry::append(poly, point_t(box_corners_r(i, 3, 0), box_corners_r(i, 3, 1)));
+                boost::geometry::append(poly, point_t(box_corners_r(i, 0, 0), box_corners_r(i, 0, 1)));
+                boost::geometry::append(qpoly, point_t(box_corners_r(j, 0, 0), box_corners_r(j, 0, 1)));
+                boost::geometry::append(qpoly, point_t(box_corners_r(j, 1, 0), box_corners_r(j, 1, 1)));
+                boost::geometry::append(qpoly, point_t(box_corners_r(j, 2, 0), box_corners_r(j, 2, 1)));
+                boost::geometry::append(qpoly, point_t(box_corners_r(j, 3, 0), box_corners_r(j, 3, 1)));
+                boost::geometry::append(qpoly, point_t(box_corners_r(j, 0, 0), box_corners_r(j, 0, 1)));
+                boost::geometry::intersection(poly, qpoly, poly_inter);
             } catch (const std::exception& e) {
                 std::cout << "box i corners:" << std::endl;
                 for(int k = 0; k < 4; ++k){
@@ -132,9 +133,9 @@ std::vector<int> rotate_non_max_suppression_cpu(
             // std::cout << "post_intsec" << std::endl;
             if (!poly_inter.empty())
             {
-                inter_area = bg::area(poly_inter.front());
+                inter_area = boost::geometry::area(poly_inter.front());
                 // std::cout << "pre_union" << " " << inter_area << std::endl;
-                bg::union_(poly, qpoly, poly_union);
+                boost::geometry::union_(poly, qpoly, poly_union);
                 /*
                 if (poly_union.empty()){
                     std::cout << "intsec area:" << " " << inter_area << std::endl;

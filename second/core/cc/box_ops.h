@@ -1,6 +1,6 @@
 #ifndef BOX_OPS_H
 #define BOX_OPS_H
-
+#include <boost/geometry/geometries/geometries.hpp>
 #include <pybind11/pybind11.h>
 #include <algorithm>
 #include <boost/geometry.hpp>
@@ -25,8 +25,8 @@ py::array_t<DType>
 rbbox_iou(py::array_t<DType> box_corners, py::array_t<DType> qbox_corners,
           py::array_t<DType> standup_iou, DType standup_thresh) {
   namespace bg = boost::geometry;
-  typedef bg::model::point<DType, 2, bg::cs::cartesian> point_t;
-  typedef bg::model::polygon<point_t> polygon_t;
+  typedef boost::geometry::model::point<DType, 2, bg::cs::cartesian> point_t;
+  typedef boost::geometry::model::polygon<point_t> polygon_t;
   polygon_t poly, qpoly;
   std::vector<polygon_t> poly_inter, poly_union;
   DType inter_area, union_area;
@@ -44,23 +44,23 @@ rbbox_iou(py::array_t<DType> box_corners, py::array_t<DType> qbox_corners,
     for (int n = 0; n < N; ++n) {
       if (standup_iou_r(n, k) <= standup_thresh)
         continue;
-      bg::append(poly, point_t(box_corners_r(n, 0, 0), box_corners_r(n, 0, 1)));
-      bg::append(poly, point_t(box_corners_r(n, 1, 0), box_corners_r(n, 1, 1)));
-      bg::append(poly, point_t(box_corners_r(n, 2, 0), box_corners_r(n, 2, 1)));
-      bg::append(poly, point_t(box_corners_r(n, 3, 0), box_corners_r(n, 3, 1)));
-      bg::append(poly, point_t(box_corners_r(n, 0, 0), box_corners_r(n, 0, 1)));
-      bg::append(qpoly,
+      boost::geometry::append(poly, point_t(box_corners_r(n, 0, 0), box_corners_r(n, 0, 1)));
+      boost::geometry::append(poly, point_t(box_corners_r(n, 1, 0), box_corners_r(n, 1, 1)));
+      boost::geometry::append(poly, point_t(box_corners_r(n, 2, 0), box_corners_r(n, 2, 1)));
+      boost::geometry::append(poly, point_t(box_corners_r(n, 3, 0), box_corners_r(n, 3, 1)));
+      boost::geometry::append(poly, point_t(box_corners_r(n, 0, 0), box_corners_r(n, 0, 1)));
+      boost::geometry::append(qpoly,
                  point_t(qbox_corners_r(k, 0, 0), qbox_corners_r(k, 0, 1)));
-      bg::append(qpoly,
+      boost::geometry::append(qpoly,
                  point_t(qbox_corners_r(k, 1, 0), qbox_corners_r(k, 1, 1)));
-      bg::append(qpoly,
+      boost::geometry::append(qpoly,
                  point_t(qbox_corners_r(k, 2, 0), qbox_corners_r(k, 2, 1)));
-      bg::append(qpoly,
+      boost::geometry::append(qpoly,
                  point_t(qbox_corners_r(k, 3, 0), qbox_corners_r(k, 3, 1)));
-      bg::append(qpoly,
+      boost::geometry::append(qpoly,
                  point_t(qbox_corners_r(k, 0, 0), qbox_corners_r(k, 0, 1)));
 
-      bg::intersection(poly, qpoly, poly_inter);
+      boost::geometry::intersection(poly, qpoly, poly_inter);
 
       if (!poly_inter.empty()) {
         inter_area = bg::area(poly_inter.front());

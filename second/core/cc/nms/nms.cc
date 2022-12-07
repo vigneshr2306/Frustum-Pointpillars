@@ -1,5 +1,6 @@
 #include "nms.h"
 #include "nms_cpu.h"
+#include <boost/geometry/geometries/geometries.hpp>
 PYBIND11_MODULE(nms, m)
 {
     m.doc() = "non_max_suppression asd";
