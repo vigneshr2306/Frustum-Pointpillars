@@ -103,7 +103,7 @@ train_input_reader: {
   prefetch_size : 25
   max_number_of_voxels: 12000
   shuffle_points: true
-  num_workers: 1
+  num_workers: 2
   groundtruth_localization_noise_std: [0.25, 0.25, 0.25]
   groundtruth_rotation_uniform_noise: [-0.15707963267, 0.15707963267]
   global_rotation_uniform_noise: [-0.78539816, 0.78539816]
@@ -185,3 +185,5 @@ eval_input_reader: {
   kitti_info_path: "/media/vicky/Office1/kitti/data/kitti_infos_test.pkl"
   kitti_root_path: "/media/vicky/Office1/kitti/data"
 }
+
+step=50, steptime=4.07, cls_loss=2.21, cls_loss_rt=0.574, loc_loss=3.71, loc_loss_rt=1.73, rpn_acc=0.975, prec@10=0.00862, rec@10=0.615, prec@30=0.00484, rec@30=0.0471, prec@50=0.00443, rec@50=0.0168, prec@70=0.00336, rec@70=0.00232, prec@80=0.000459, rec@80=0.000106, prec@90=0.0, rec@90=0.0, prec@95=0.0, rec@95=0.0, loss.loc_elem=[0.0614, 0.0711, 0.255, 0.0759, 0.0786, 0.0682, 0.255], loss.cls_pos_rt=0.359, loss.cls_neg_rt=0.215, loss.dir_rt=0.715, num_vox=5617, num_pos=107, num_neg=11173, num_anchors=11447, lr=0.0002, image_idx=240
