@@ -1,3 +1,4 @@
+import cv2
 import sys
 import csv
 import numpy as np
@@ -17,22 +18,30 @@ checkpoint_file = 'mmsegmentation/checkpoints/pspnet_r50-d8_512x1024_40k_citysca
 model = init_segmentor(config_file, checkpoint_file, device='cuda:0')
 # test a single image
 img = '/home/vicky/output.png'
-result = inference_segmentor(model, img)
+result, prob_per_pixel = inference_segmentor(model, img)
 result1 = np.array(result).squeeze()
-
+prob = prob_per_pixel.cpu().numpy().squeeze()
+u, c = np.unique(result1, return_counts=True)
+needed_class = u[c == c.max()]
+result1[result1 != needed_class] = 0
+print(np.max(result1), result1.shape)
+result1[result1 > 0] = 255
+cv2.imshow("result1", result1)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
 # np.set_printoptions(threshold=None)
-with open('GFG.csv', 'w') as f:
+# with open('GFG.csv', 'w') as f:
 
-    # using csv.writer method from CSV package
-    write = csv.writer(f)
+#     # using csv.writer method from CSV package
+#     write = csv.writer(f)
 
-    write.writerow(result1)
-np.set_printoptions(threshold=sys.maxsize)
+#     write.writerow(result1)
+# np.set_printoptions(threshold=sys.maxsize)
 # print("len===", len(result), len(result[0]), len(result[0][0]))
-print(result1)
-with open('list.txt', 'w') as f:
-    for line in result1:
-        f.write(f"{line}\n")
+# print(result1)
+# with open('list.txt', 'w') as f:
+#     for line in result1:
+#         f.write(f"{line}\n")
 # show the results
 # show_result_pyplot(model, img, result, get_palette('cityscapes'))
 
@@ -79,37 +88,37 @@ with open('list.txt', 'w') as f:
 #         mmcv.imwrite(img, out_file)
 
 
-def inference_segmentor(model, imgs):
-    """Inference image(s) with the segmentor.
+# def inference_segmentor(model, imgs):
+#     """Inference image(s) with the segmentor.
 
-    Args:
-        model (nn.Module): The loaded segmentor.
-        imgs (str/ndarray or list[str/ndarray]): Either image files or loaded
-            images.
+#     Args:
+#         model (nn.Module): The loaded segmentor.
+#         imgs (str/ndarray or list[str/ndarray]): Either image files or loaded
+#             images.
 
-    Returns:
-        (list[Tensor]): The segmentation result.
-    """
-    cfg = model.cfg
-    device = next(model.parameters()).device  # model device
-    # build the data pipeline
-    test_pipeline = [LoadImage()] + cfg.data.test.pipeline[1:]
-    test_pipeline = Compose(test_pipeline)
-    # prepare data
-    data = []
-    imgs = imgs if isinstance(imgs, list) else [imgs]
-    for img in imgs:
-        img_data = dict(img=img)
-        img_data = test_pipeline(img_data)
-        data.append(img_data)
-    data = collate(data, samples_per_gpu=len(imgs))
-    if next(model.parameters()).is_cuda:
-        # scatter to specified GPU
-        data = scatter(data, [device])[0]
-    else:
-        data['img_metas'] = [i.data[0] for i in data['img_metas']]
+#     Returns:
+#         (list[Tensor]): The segmentation result.
+#     """
+#     cfg = model.cfg
+#     device = next(model.parameters()).device  # model device
+#     # build the data pipeline
+#     test_pipeline = [LoadImage()] + cfg.data.test.pipeline[1:]
+#     test_pipeline = Compose(test_pipeline)
+#     # prepare data
+#     data = []
+#     imgs = imgs if isinstance(imgs, list) else [imgs]
+#     for img in imgs:
+#         img_data = dict(img=img)
+#         img_data = test_pipeline(img_data)
+#         data.append(img_data)
+#     data = collate(data, samples_per_gpu=len(imgs))
+#     if next(model.parameters()).is_cuda:
+#         # scatter to specified GPU
+#         data = scatter(data, [device])[0]
+#     else:
+#         data['img_metas'] = [i.data[0] for i in data['img_metas']]
 
-    # forward the model
-    with torch.no_grad():
-        result = model(return_loss=False, rescale=True, **data)
-    return result
+#     # forward the model
+#     with torch.no_grad():
+#         result = model(return_loss=False, rescale=True, **data)
+#     return result
