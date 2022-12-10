@@ -316,7 +316,7 @@ def train(config_path,
         total_loop -= 1
     mixed_optimizer.zero_grad()
     try:
-        exit()
+        # exit()
         for _ in range(total_loop):
             if total_step_elapsed + train_cfg.steps_per_eval > train_cfg.steps:
                 steps = train_cfg.steps % train_cfg.steps_per_eval

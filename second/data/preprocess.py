@@ -6,7 +6,7 @@ from collections import defaultdict
 import snoop
 import numpy as np
 from skimage import io as imgio
-import segmentation_models_pytorch as smp
+# import segmentation_models_pytorch as smp
 from second.core import box_np_ops
 from second.core import preprocess as prep
 from second.core.geometry import points_in_convex_polygon_3d_jit
@@ -16,8 +16,8 @@ import numba
 from numba import jit, types
 from PIL import Image
 import torch
-seg_model = smp.Unet(encoder_name="resnet34",
-                     encoder_weights="imagenet", in_channels=3, classes=2)
+# seg_model = smp.Unet(encoder_name="resnet34",
+#                      encoder_weights="imagenet", in_channels=3, classes=2)
 
 
 def merge_second_batch(batch_list, _unused=False):
@@ -93,33 +93,33 @@ def prep_pointcloud(input_dict,
     exists.
     """
     points = input_dict["points"]
-    print("input dict========", input_dict)
-    image_path_temp = input_dict["image_path"]
-    image_path_temp = '/media/vicky/Office1/kitti/data/' + image_path_temp
-    print("IMAGE PATH", image_path_temp)
-    img = cv2.imread(image_path_temp)
-    # cv2.imshow("kitti image", img)
-    temp_bbox = input_dict["bboxes"][0]
-    point1 = (int(temp_bbox[0]), int(temp_bbox[1]))
-    point2 = (int(temp_bbox[2]), int(temp_bbox[3]))
-    print("point1=====", point1)
-    print("point1=====", point2)
+    # print("input dict========", input_dict)
+    # image_path_temp = input_dict["image_path"]
+    # image_path_temp = '/media/vicky/Office1/kitti/data/' + image_path_temp
+    # print("IMAGE PATH", image_path_temp)
+    # img = cv2.imread(image_path_temp)
+    # # cv2.imshow("kitti image", img)
+    # temp_bbox = input_dict["bboxes"][0]
+    # point1 = (int(temp_bbox[0]), int(temp_bbox[1]))
+    # point2 = (int(temp_bbox[2]), int(temp_bbox[3]))
+    # # print("point1=====", point1)
+    # print("point1=====", point2)
     # print("IMAGE============")
     # print(img)
     # cv2.imshow("img", img)
 
     # img = cv2.circle(img, point1, 1, (255, 0, 0), 2)
-    img = cv2.rectangle(img, point1, point2, (255, 0, 0), 2)
+    # img = cv2.rectangle(img, point1, point2, (255, 0, 0), 2)
     # cv2.imshow("img2", img)
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
 
-    cv2.imwrite('/home/vicky/output.png', img)
-    seg_mask = seg_model(torch.from_numpy(img))
-    print(seg_mask)
-    seg_mask2 = seg_mask.numpy()
-    cv2.imwrite('/home/vicky/output_seg.png', seg_mask2)
-    print("done saving")
+    # cv2.imwrite('/home/vicky/output.png', img)
+    # seg_mask = seg_model(torch.from_numpy(img))
+    # print(seg_mask)
+    # seg_mask2 = seg_mask.numpy()
+    # cv2.imwrite('/home/vicky/output_seg.png', seg_mask2)
+    # print("done saving")
 
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
@@ -596,7 +596,7 @@ def lidar_to_img(points, grid_size, voxel_size, fill):
 def get_masked_points(points, mask, detections, pc_image_coord, img_fov_inds=None):
     # mask = np.zeros(points.shape[0], dtype=bool)
     for box2d in detections:
-        print("Detections====", detections)
+        # print("Detections====", detections)
 
         xmin, ymin, xmax, ymax = box2d
         w = xmax-xmin
@@ -613,7 +613,7 @@ def get_masked_points(points, mask, detections, pc_image_coord, img_fov_inds=Non
         # new_prob = np.exp(-((((xy[:,0] - x0)/w)**4) + ((xy[:,1] - y0)/h)**4 ))
         new_prob = np.exp(-((xy[:, 0] - x0)**2/(0.5*w**2)) -
                           ((xy[:, 1] - y0)**2/(0.5*h**2)))  # original equation
-        print("NEW PROB=====================", new_prob.shape)
+        # print("NEW PROB=====================", new_prob.shape)
         cur_prob = points[box_fov_inds, -1]
         prob_mask = new_prob < cur_prob
         new_prob[prob_mask] = cur_prob[prob_mask]
