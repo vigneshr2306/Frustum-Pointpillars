@@ -1,34 +1,48 @@
 import cv2
 import sys
 import csv
+import tensorflow
 import numpy as np
 from mmseg.core.evaluation import get_palette
 from mmseg.apis import inference_segmentor, init_segmentor, show_result_pyplot
+
 # import mmseg
 import torch
 import torchvision
 import pickle
+
 # print(torch.__version__, torch.cuda.is_available())
 
 # Check MMSegmentation installation
 # print(mmseg.__version__)
-config_file = 'mmsegmentation/configs/pspnet/pspnet_r50-d8_512x1024_40k_cityscapes.py'
-checkpoint_file = 'mmsegmentation/checkpoints/pspnet_r50-d8_512x1024_40k_cityscapes_20200605_003338-2966598c.pth'
+config_file = "mmsegmentation/configs/pspnet/pspnet_r50-d8_512x1024_40k_cityscapes.py"
+checkpoint_file = "mmsegmentation/checkpoints/pspnet_r50-d8_512x1024_40k_cityscapes_20200605_003338-2966598c.pth"
 # build the model from a config file and a checkpoint file
-model = init_segmentor(config_file, checkpoint_file, device='cuda:0')
+model = init_segmentor(config_file, checkpoint_file, device="cuda:0")
 # test a single image
-img = '/home/vicky/output.png'
+img = "/home/keshav/car.jpg"
 result, prob_per_pixel = inference_segmentor(model, img)
 result1 = np.array(result).squeeze()
-prob = prob_per_pixel.cpu().numpy().squeeze()
+print(result1.shape, result1)
+# prob = prob_per_pixel.cpu().numpy().squeeze()
 u, c = np.unique(result1, return_counts=True)
 needed_class = u[c == c.max()]
 result1[result1 != needed_class] = 0
 print(np.max(result1), result1.shape)
 result1[result1 > 0] = 255
-cv2.imshow("result1", result1)
+output = np.empty((result1.shape[0], result1.shape[1], 3))
+for i in range(result1.shape[0]):
+    for j in range(result1.shape[1]):
+        if result1[i][j] == 0:
+            output[i][j] = np.array([0, 0, 0])
+        else:
+            output[i][j] = np.array([255, 0, 0])
+
+print(output.shape)
+cv2.imshow("result1", output)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
+exit()
 # np.set_printoptions(threshold=None)
 # with open('GFG.csv', 'w') as f:
 
