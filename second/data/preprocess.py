@@ -19,6 +19,8 @@ import torch
 from second.data.segmentation import segmentation_full, segmentation_det
 # seg_model = smp.Unet(encoder_name="resnet34",
 #                      encoder_weights="imagenet", in_channels=3, classes=2)
+# global negative_bbox_count
+# negative_bbox_count = 0
 
 
 def merge_second_batch(batch_list, _unused=False):
@@ -98,7 +100,7 @@ def prep_pointcloud(input_dict,
     # exit()
     local_path = "/media/vicky/Office1/kitti/data/"
     img_path = local_path + input_dict["image_path"]
-    print("IMAGE PATH in dict===", input_dict["image_path"])
+    # print("IMAGE PATH in dict===", input_dict["image_path"])
     # img_path = "/home/vicky/output.png"
     # img_path = local_path + img_path
     # image_path_temp = '/media/vicky/Office1/kitti/data/' + image_path_temp
@@ -609,9 +611,12 @@ def get_masked_points(img_path, points, mask, detections, pc_image_coord, img_fo
     detections = detections.astype(int)
     print("detections shape", detections.shape)
     for box2d in detections:
-        print("box2d====", box2d)
+        # print("box2d====", box2d)
 
         xmin, ymin, xmax, ymax = box2d
+        # xmin, ymin, xmax, ymax = min(abs(xmin), image.shape[1]), min(
+        #     abs(ymin), image.shape[0]), min(abs(xmax), image.shape[1]), min(abs(ymax), image.shape[0])
+
         # print(xmin, ymin, xmax, ymax)
         # exit()
         w = xmax-xmin
@@ -626,14 +631,19 @@ def get_masked_points(img_path, points, mask, detections, pc_image_coord, img_fo
         box_fov_inds = box_fov_inds & img_fov_inds
         xy = pc_image_coord[box_fov_inds]
         # new_prob = np.exp(-((((xy[:,0] - x0)/w)**4) + ((xy[:,1] - y0)/h)**4 ))
-        # new_prob = np.exp(-((xy[:, 0] - x0)**2/(0.5*w**2)) -
-        #                   ((xy[:, 1] - y0)**2/(0.5*h**2)))  # original equation
-        # print("IMAGE PATH===", img_path)
+       # print("IMAGE PATH===", img_path)
         # exit()
         # new_prob = segmentation_frustum(img_path, box2d, xy, show=False)
-        new_prob = segmentation_det(image, xy,
-                                    box2d, segmentation_output_full, prob_per_pixel_full, show=False)
-        print("NEW PROB=====================", new_prob.shape)
+        # if xmin < 0 or ymin < 0 or xmax > image.shape[1] or ymax > image.shape[0]:
+        try:
+            new_prob = segmentation_det(image, xy,
+                                        box2d, segmentation_output_full, prob_per_pixel_full, show=False)
+        except:
+            new_prob = np.exp(-((xy[:, 0] - x0)**2/(0.5*w**2)) -
+                              ((xy[:, 1] - y0)**2/(0.5*h**2)))  # original equation
+            # negative_bbox_count += 1
+            print("negative_bbox\n")
+        # print("NEW PROB=====================", new_prob.shape)
 
         # exit()
         cur_prob = points[box_fov_inds, -1]

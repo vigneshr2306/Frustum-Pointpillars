@@ -50,15 +50,15 @@ def segmentation_full(img):
     #     print("negative bbox image", image_path)
     #     exit()
 
-    print("img shape", img.shape)
+    # print("img shape", img.shape)
     segmentation_output_full, prob_per_pixel_full = inference_segmentor(
         model, img)
     segmentation_output_full = np.array(segmentation_output_full).squeeze()
-    print(segmentation_output_full.shape)
+    # print(segmentation_output_full.shape)
     prob_per_pixel_full = (
         prob_per_pixel_full.cpu().squeeze().transpose(0, 1).transpose(1, 2).numpy()
     )
-    print(prob_per_pixel_full.shape)
+    # print(prob_per_pixel_full.shape)
 
     # cv2.imwrite("/home/vicky/out_seg.png", segmentation_output)
     # segmentation_output_full = np.array(segmentation_output_full).squeeze()
@@ -69,8 +69,8 @@ def segmentation_det(img, xy, bbox, segmentation_output_full, prob_per_pixel_ful
     xmin, ymin, xmax, ymax = bbox
     segmentation_output, prob_per_pixel = bbox_extract(img,
                                                        bbox, segmentation_output_full, prob_per_pixel_full)
-    print("after bbox extraction===",
-          segmentation_output.shape, prob_per_pixel.shape)
+    # print("after bbox extraction===",
+    #       segmentation_output.shape, prob_per_pixel.shape)
     unique_class, count = np.unique(segmentation_output, return_counts=True)
     needed_class = unique_class[count == count.max()]
     segmentation_output[segmentation_output != needed_class] = 0
@@ -88,8 +88,8 @@ def segmentation_det(img, xy, bbox, segmentation_output_full, prob_per_pixel_ful
             else:
                 output[i][j] = np.array([255, 0, 0])
                 prob_output[i][j] = prob_per_pixel[i][j][needed_class]
-    print("prob_output")
-    print(prob_output.shape, prob_output.dtype)
+    # print("prob_output")
+    # print(prob_output.shape, prob_output.dtype)
     # l = np.array([prob_output[[120, 130, 140, 150], [120, 120, 120, 120]]])
     # print(xy[:, 0], xy[:, 1], xy.shape)
     # astype(int) done as velo projected to camera coordinates are float and indices can't be float
