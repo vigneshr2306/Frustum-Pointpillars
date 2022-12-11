@@ -769,7 +769,7 @@ class VoxelNet(nn.Module):
         num_class_with_bg = self._num_class
         if not self._encode_background_as_zeros:
             num_class_with_bg = self._num_class + 1
-
+        
         batch_cls_preds = batch_cls_preds.view(batch_size, -1,
                                                num_class_with_bg)
         batch_box_preds = self._box_coder.decode_torch(batch_box_preds,

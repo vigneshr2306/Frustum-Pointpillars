@@ -16,6 +16,7 @@ import numba
 from numba import jit, types
 from PIL import Image
 import torch
+from second.data.segmentation import segmentation_full, segmentation_det
 # seg_model = smp.Unet(encoder_name="resnet34",
 #                      encoder_weights="imagenet", in_channels=3, classes=2)
 
@@ -94,7 +95,12 @@ def prep_pointcloud(input_dict,
     """
     points = input_dict["points"]
     # print("input dict========", input_dict)
-    # image_path_temp = input_dict["image_path"]
+    # exit()
+    local_path = "/media/vicky/Office1/kitti/data/"
+    img_path = local_path + input_dict["image_path"]
+    print("IMAGE PATH in dict===", input_dict["image_path"])
+    # img_path = "/home/vicky/output.png"
+    # img_path = local_path + img_path
     # image_path_temp = '/media/vicky/Office1/kitti/data/' + image_path_temp
     # print("IMAGE PATH", image_path_temp)
     # img = cv2.imread(image_path_temp)
@@ -183,8 +189,8 @@ def prep_pointcloud(input_dict,
         # detections = box_np_ops.box3d_to_bbox(gt_box3d_camera, rect, Trv2c, P2)
 
         mask = np.zeros(points.shape[0], dtype=bool)
-        points = get_masked_points(
-            points, mask, ref_bboxes, pc_image_coord, img_fov_inds)
+        points = get_masked_points(img_path,
+                                   points, mask, ref_bboxes, pc_image_coord, img_fov_inds)
 
         if len(points) == 0:  # Change this hack!!
             points = np.zeros((100, 5))
@@ -359,7 +365,7 @@ def prep_pointcloud(input_dict,
             mask = np.zeros(points.shape[0], dtype=bool)
 
             points = get_masked_points(
-                points, mask, detections, pc_image_coord, img_fov_inds)
+                img_path, points, mask, detections, pc_image_coord, img_fov_inds)
 
             # if len(points) == 0 : #Change this hack!!
             #     points = np.zeros((100,5))
@@ -593,12 +599,21 @@ def lidar_to_img(points, grid_size, voxel_size, fill):
 
 
 # @snoop
-def get_masked_points(points, mask, detections, pc_image_coord, img_fov_inds=None):
+def get_masked_points(img_path, points, mask, detections, pc_image_coord, img_fov_inds=None):
     # mask = np.zeros(points.shape[0], dtype=bool)
+    # print("before", detections)
+    image = cv2.imread(img_path)
+    # cv2.imwrite("/home/vicky/out.png", image)
+    segmentation_output_full, prob_per_pixel_full = segmentation_full(
+        image)
+    detections = detections.astype(int)
+    print("detections shape", detections.shape)
     for box2d in detections:
-        # print("Detections====", detections)
+        print("box2d====", box2d)
 
         xmin, ymin, xmax, ymax = box2d
+        # print(xmin, ymin, xmax, ymax)
+        # exit()
         w = xmax-xmin
         h = ymax-ymin
         x0 = (xmax+xmin)/2
@@ -611,9 +626,16 @@ def get_masked_points(points, mask, detections, pc_image_coord, img_fov_inds=Non
         box_fov_inds = box_fov_inds & img_fov_inds
         xy = pc_image_coord[box_fov_inds]
         # new_prob = np.exp(-((((xy[:,0] - x0)/w)**4) + ((xy[:,1] - y0)/h)**4 ))
-        new_prob = np.exp(-((xy[:, 0] - x0)**2/(0.5*w**2)) -
-                          ((xy[:, 1] - y0)**2/(0.5*h**2)))  # original equation
-        # print("NEW PROB=====================", new_prob.shape)
+        # new_prob = np.exp(-((xy[:, 0] - x0)**2/(0.5*w**2)) -
+        #                   ((xy[:, 1] - y0)**2/(0.5*h**2)))  # original equation
+        # print("IMAGE PATH===", img_path)
+        # exit()
+        # new_prob = segmentation_frustum(img_path, box2d, xy, show=False)
+        new_prob = segmentation_det(image, xy,
+                                    box2d, segmentation_output_full, prob_per_pixel_full, show=False)
+        print("NEW PROB=====================", new_prob.shape)
+
+        # exit()
         cur_prob = points[box_fov_inds, -1]
         prob_mask = new_prob < cur_prob
         new_prob[prob_mask] = cur_prob[prob_mask]

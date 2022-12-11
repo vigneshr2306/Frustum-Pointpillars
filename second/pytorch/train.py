@@ -769,4 +769,5 @@ def evaluate(config_path,
 
 
 if __name__ == '__main__':
+    torch.multiprocessing.set_start_method('spawn')
     fire.Fire()
