@@ -48,7 +48,7 @@ def read_det_file(det_filename):
         all_boxes_2d[det_idx]['names'].append(type_list[i])
         all_boxes_2d[det_idx]['bboxes'].append(box2d_list[i])
         all_boxes_2d[det_idx]['prob'].append(prob_list[i])
-
+    print(box2d_list)
     return all_boxes_2d
 
 
@@ -769,5 +769,6 @@ def evaluate(config_path,
 
 
 if __name__ == '__main__':
+    torch.cuda.empty_cache()
     torch.multiprocessing.set_start_method('spawn')
     fire.Fire()

@@ -17,10 +17,7 @@ from numba import jit, types
 from PIL import Image
 import torch
 from second.data.segmentation import segmentation_full, segmentation_det
-# seg_model = smp.Unet(encoder_name="resnet34",
-#                      encoder_weights="imagenet", in_channels=3, classes=2)
-# global negative_bbox_count
-# negative_bbox_count = 0
+from second.data.kitti_bbox_sanity_checker import bbox_sanity_check
 
 
 def merge_second_batch(batch_list, _unused=False):
@@ -608,8 +605,11 @@ def get_masked_points(img_path, points, mask, detections, pc_image_coord, img_fo
     # cv2.imwrite("/home/vicky/out.png", image)
     segmentation_output_full, prob_per_pixel_full = segmentation_full(
         image)
-    detections = detections.astype(int)
-    print("detections shape", detections.shape)
+    detections = bbox_sanity_check(img_path)
+    print("detections", detections)
+
+    # detections = detections
+    # print("detections shape", len(detections))
     for box2d in detections:
         # print("box2d====", box2d)
 
@@ -634,7 +634,8 @@ def get_masked_points(img_path, points, mask, detections, pc_image_coord, img_fo
        # print("IMAGE PATH===", img_path)
         # exit()
         # new_prob = segmentation_frustum(img_path, box2d, xy, show=False)
-        # if xmin < 0 or ymin < 0 or xmax > image.shape[1] or ymax > image.shape[0]:
+        if xmin < 0 or ymin < 0 or xmax > image.shape[1] or ymax > image.shape[0]:
+            print("bad bbox", box2d)
         try:
             new_prob = segmentation_det(image, xy,
                                         box2d, segmentation_output_full, prob_per_pixel_full, show=False)
@@ -643,6 +644,7 @@ def get_masked_points(img_path, points, mask, detections, pc_image_coord, img_fo
                               ((xy[:, 1] - y0)**2/(0.5*h**2)))  # original equation
             # negative_bbox_count += 1
             print("negative_bbox\n")
+            print("detections", box2d)
         # print("NEW PROB=====================", new_prob.shape)
 
         # exit()

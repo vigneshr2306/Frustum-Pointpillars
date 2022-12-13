@@ -179,7 +179,7 @@ eval_input_reader: {
   prefetch_size : 25
   max_number_of_voxels: 12000
   shuffle_points: false
-  num_workers: 3
+  num_workers: 0
   anchor_area_threshold: 1
   remove_environment: false
   kitti_info_path: "/media/vicky/Office1/kitti/data/kitti_infos_val.pkl"
