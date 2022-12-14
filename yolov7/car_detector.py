@@ -6,7 +6,7 @@ import torch
 import numpy as np
 import torch.backends.cudnn as cudnn
 from numpy import random
-import sys
+
 from yolov7.models.experimental import attempt_load
 from yolov7.utils.datasets import LoadStreams, LoadImages
 from yolov7.utils.general import (
@@ -31,7 +31,7 @@ from yolov7.utils.torch_utils import (
 
 classes_to_filter = ["car"]
 opt = {
-    "weights": "/home/vicky/Coding/Projects/Frustum-Pointpillars/yolov7/models/yolov7-e6e.pt",
+    "weights": "/home/vicky/Coding/Projects/Frustum-Pointpillars/yolov7/yolov7-e6e.pt",
     "yaml": "data/coco.yaml",
     "img-size": 640,
     "conf-thres": 0.25,
@@ -39,6 +39,7 @@ opt = {
     "device": "0",
     "classes": classes_to_filter,
 }
+
 
 weights, imgsz = opt["weights"], opt["img-size"]
 set_logging()
@@ -96,6 +97,7 @@ def letterbox(
 
 def car_detector(img):
     # start = time.time()
+    img0 = img.copy()
     with torch.no_grad():
         if half:
             model.half()
@@ -151,9 +153,25 @@ def car_detector(img):
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "
                 for *xyxy, conf, cls in reversed(det):
                     label = f"{names[int(cls)]} {conf:.2f}"
+                    # plot_one_box(
+                    #     xyxy,
+                    #     img,
+                    #     label=label,
+                    #     color=colors[int(cls)],
+                    #     line_thickness=3,
+                    # )
+
                     xyxy = list(
                         [int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])]
                     )
+                    # cv2.rectangle(
+                    #     img0,
+                    #     (xyxy[0], xyxy[1]),
+                    #     (xyxy[2], xyxy[3]),
+                    #     (255, 0, 0),
+                    #     1,
+                    #     cv2.LINE_AA,
+                    # )
                     output.append(xyxy)
         # end = time.time()
         # print("inf_time:", end - start)
@@ -162,11 +180,20 @@ def car_detector(img):
 
 
 if __name__ == "__main__":
-    source = "/home/vicky/cat.jpeg"
+    source = "/home/vicky/6.png"
+
     # source = "inference/images/horses.jpg"
     img0 = cv2.imread(source)
     box_plots = car_detector(img0)
-    print(box_plots)
+    print(box_plots, img0.shape)
+    cv2.rectangle(
+        img0,
+        (548, 171),
+        (572, 194),
+        (0, 255, 0),
+        1,
+        cv2.LINE_AA,
+    )
     cv2.imshow("val", img0)
     cv2.waitKey(0)
     cv2.destroyAllWindows()

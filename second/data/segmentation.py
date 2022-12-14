@@ -55,11 +55,11 @@ def segmentation_full(img):
     segmentation_output_full, prob_per_pixel_full = inference_segmentor(
         model, img)
     segmentation_output_full = np.array(segmentation_output_full).squeeze()
-    # print(segmentation_output_full.shape)
+    # print("seg_full", segmentation_output_full.shape)
     prob_per_pixel_full = (
         prob_per_pixel_full.cpu().squeeze().transpose(0, 1).transpose(1, 2).numpy()
     )
-    # print(prob_per_pixel_full.shape)
+    # print("prob full", prob_per_pixel_full.shape)
 
     # cv2.imwrite("/home/vicky/out_seg.png", segmentation_output)
     # segmentation_output_full = np.array(segmentation_output_full).squeeze()
@@ -69,15 +69,23 @@ def segmentation_full(img):
 def segmentation_det(img, xy, bbox, segmentation_output_full, prob_per_pixel_full, show=False):
     # print("xy,bbox", xy, bbox)
     xmin, ymin, xmax, ymax = bbox
+    # print("bbox", bbox)
     segmentation_output, prob_per_pixel = bbox_extract(img,
                                                        bbox, segmentation_output_full, prob_per_pixel_full)
     # print("after bbox extraction===",
     #       segmentation_output.shape, prob_per_pixel.shape)
     # seg_err_removed = segmentation_output(segmentation_output != 255)
     unique_class, count = np.unique(segmentation_output, return_counts=True)
+    # print("segmentation output", segmentation_output)
+    # print("unique class", unique_class)
+    # print("count", count)
     count = count[unique_class != 255]
+    if (len(unique_class) == 1 and unique_class[0] == 255):
+        unique_class[0] = 0
     unique_class = unique_class[unique_class != 255]
-
+    # if (len(unique_class) == 0):
+    #     unique_class = np.append(unique_class, 0).astype(int)
+    # print("unique class", unique_class)
     needed_class = unique_class[count == count.max()]
 
     # print("unique class", unique_class)

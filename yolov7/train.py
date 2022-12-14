@@ -6,10 +6,10 @@ from utils.google_utils import attempt_download
 from utils.general import labels_to_class_weights, increment_path, labels_to_image_weights, init_seeds, \
     fitness, strip_optimizer, get_latest_run, check_dataset, check_file, check_git_status, check_img_size, \
     check_requirements, print_mutation, set_logging, one_cycle, colorstr
-from utils.datasets import create_dataloader
-from utils.autoanchor import check_anchors
+from yolov7.utils.datasets import create_dataloader
+from yolov7.utils.autoanchor import check_anchors
 from yolov7.models.yolo import Model
-from models.experimental import attempt_load
+from yolov7.models.experimental import attempt_load
 import test  # import test.py to get mAP after each epoch
 import argparse
 import logging

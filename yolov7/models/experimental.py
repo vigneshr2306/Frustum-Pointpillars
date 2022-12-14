@@ -1,11 +1,11 @@
+from yolov7.utils.google_utils import attempt_download
+from yolov7.models.common import Conv, DWConv
 import numpy as np
 import random
 import torch
 import torch.nn as nn
 # import torch.nn.functional.SiLU
-
-from yolov7.models.common import Conv, DWConv
-from yolov7.utils.google_utils import attempt_download
+import sys
 
 
 class CrossConv(nn.Module):
@@ -254,11 +254,17 @@ class End2End(nn.Module):
 
 def attempt_load(weights, map_location=None):
     # Loads an ensemble of models weights=[a,b,c] or a single model weights=[a] or weights=a
+    # sys.path.insert(0,
+    #                 "/home/vicky/Coding/Projects/Frustum-Pointpillars/yolov7/models")
+
     model = Ensemble()
     for w in weights if isinstance(weights, list) else [weights]:
         attempt_download(w)
         print("map loc", map_location)
+        print("w", w)
         ckpt = torch.load(w, map_location=map_location)  # load
+        # ckpt = torch.hub.load(
+        #     "/home/vicky/Coding/Projects/Frustum-Pointpillars/yolov7/", 'custom', '/home/vicky/Coding/Projects/Frustum-Pointpillars/yolov7/models/yolov7-e6e.pt', source='local')
         print("successfully done ckpt")
         model.append(ckpt['ema' if ckpt.get('ema')
                      else 'model'].float().fuse().eval())  # FP32 model

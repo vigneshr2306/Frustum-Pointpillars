@@ -39,6 +39,7 @@ def create(name, pretrained, channels, classes, autoshape):
         if pretrained:
             fname = f'{name}.pt'  # checkpoint filename
             attempt_download(fname)  # download if not found locally
+            # print("before loading")
             ckpt = torch.load(fname, map_location=torch.device('cpu'))  # load
             msd = model.state_dict()  # model state_dict
             # checkpoint state_dict as FP32

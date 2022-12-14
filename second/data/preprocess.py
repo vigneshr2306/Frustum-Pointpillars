@@ -16,7 +16,7 @@ import numba
 from numba import jit, types
 from PIL import Image
 import torch
-# from second.data.segmentation import segmentation_full, segmentation_det
+from second.data.segmentation import segmentation_full, segmentation_det
 from second.data.kitti_bbox_sanity_checker import bbox_sanity_check
 from yolov7.car_detector import car_detector
 
