@@ -1,5 +1,5 @@
 import cv2
-img = cv2.imread('/media/vicky/Office1/kitti/data/training/image_2/000004.png')
+img = cv2.imread('/media/vicky/Office1/kitti/data/training/image_2/004262.png')
 # img1 = img[160:358, 756:1097]
 cv2.imshow("img", img)
 print(img.shape)

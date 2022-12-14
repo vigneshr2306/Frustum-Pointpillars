@@ -17,7 +17,7 @@ def bbox_sanity_check(img_path):
             detections1 = [int(eval(i)) for i in arr[4:8]]
             detections.append(detections1)
             # print(new_line)
-    print(detections)
+    # print(detections)
     # detections = np.array(detections)
     return detections
 

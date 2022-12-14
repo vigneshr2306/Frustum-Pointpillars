@@ -6,10 +6,10 @@ import torch
 import numpy as np
 import torch.backends.cudnn as cudnn
 from numpy import random
-
-from models.experimental import attempt_load
-from utils.datasets import LoadStreams, LoadImages
-from utils.general import (
+import sys
+from yolov7.models.experimental import attempt_load
+from yolov7.utils.datasets import LoadStreams, LoadImages
+from yolov7.utils.general import (
     check_img_size,
     check_requirements,
     check_imshow,
@@ -21,8 +21,8 @@ from utils.general import (
     set_logging,
     increment_path,
 )
-from utils.plots import plot_one_box
-from utils.torch_utils import (
+from yolov7.utils.plots import plot_one_box
+from yolov7.utils.torch_utils import (
     select_device,
     load_classifier,
     time_synchronized,
@@ -31,7 +31,7 @@ from utils.torch_utils import (
 
 classes_to_filter = ["car"]
 opt = {
-    "weights": "yolov7-e6e.pt",
+    "weights": "/home/vicky/Coding/Projects/Frustum-Pointpillars/yolov7/models/yolov7-e6e.pt",
     "yaml": "data/coco.yaml",
     "img-size": 640,
     "conf-thres": 0.25,
@@ -39,7 +39,6 @@ opt = {
     "device": "0",
     "classes": classes_to_filter,
 }
-
 
 weights, imgsz = opt["weights"], opt["img-size"]
 set_logging()
@@ -72,13 +71,15 @@ def letterbox(
     # Compute padding
     ratio = r, r  # width, height ratios
     new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r))
-    dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - new_unpad[1]  # wh padding
+    dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - \
+        new_unpad[1]  # wh padding
     if auto:  # minimum rectangle
         dw, dh = np.mod(dw, stride), np.mod(dh, stride)  # wh padding
     elif scaleFill:  # stretch
         dw, dh = 0.0, 0.0
         new_unpad = (new_shape[1], new_shape[0])
-        ratio = new_shape[1] / shape[1], new_shape[0] / shape[0]  # width, height ratios
+        ratio = new_shape[1] / shape[1], new_shape[0] / \
+            shape[0]  # width, height ratios
 
     dw /= 2  # divide padding into 2 sides
     dh /= 2
@@ -141,11 +142,13 @@ def car_detector(img):
             s += "%gx%g " % img.shape[2:]  # print string
             gn = torch.tensor(img0.shape)[[1, 0, 1, 0]]
             if len(det):
-                det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img0.shape).round()
+                det[:, :4] = scale_coords(
+                    img.shape[2:], det[:, :4], img0.shape).round()
 
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
-                    s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
+                    # add to string
+                    s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "
                 for *xyxy, conf, cls in reversed(det):
                     label = f"{names[int(cls)]} {conf:.2f}"
                     xyxy = list(
@@ -159,7 +162,7 @@ def car_detector(img):
 
 
 if __name__ == "__main__":
-    source = "/home/keshav/multicar.jpg"
+    source = "/home/vicky/cat.jpeg"
     # source = "inference/images/horses.jpg"
     img0 = cv2.imread(source)
     box_plots = car_detector(img0)

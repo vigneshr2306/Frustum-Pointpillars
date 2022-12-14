@@ -48,7 +48,7 @@ def read_det_file(det_filename):
         all_boxes_2d[det_idx]['names'].append(type_list[i])
         all_boxes_2d[det_idx]['bboxes'].append(box2d_list[i])
         all_boxes_2d[det_idx]['prob'].append(prob_list[i])
-    print(box2d_list)
+    # print(box2d_list)
     return all_boxes_2d
 
 
@@ -338,7 +338,7 @@ def train(config_path,
                 # pdb.set_trace()
 
                 ret_dict = net(example_torch)
-                print("ret_dict", ret_dict)
+                # print("ret_dict", ret_dict)
                 # box_preds = ret_dict["box_preds"]
                 cls_preds = ret_dict["cls_preds"]
                 loss = ret_dict["loss"].mean()

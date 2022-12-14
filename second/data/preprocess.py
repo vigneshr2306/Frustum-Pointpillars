@@ -16,8 +16,9 @@ import numba
 from numba import jit, types
 from PIL import Image
 import torch
-from second.data.segmentation import segmentation_full, segmentation_det
+# from second.data.segmentation import segmentation_full, segmentation_det
 from second.data.kitti_bbox_sanity_checker import bbox_sanity_check
+from yolov7.car_detector import car_detector
 
 
 def merge_second_batch(batch_list, _unused=False):
@@ -600,18 +601,19 @@ def lidar_to_img(points, grid_size, voxel_size, fill):
 # @snoop
 def get_masked_points(img_path, points, mask, detections, pc_image_coord, img_fov_inds=None):
     # mask = np.zeros(points.shape[0], dtype=bool)
-    # print("before", detections)
     image = cv2.imread(img_path)
+    detections = car_detector(image)
+    # print("img_path", img_path)
     # cv2.imwrite("/home/vicky/out.png", image)
     segmentation_output_full, prob_per_pixel_full = segmentation_full(
         image)
-    detections = bbox_sanity_check(img_path)
-    print("detections", detections)
+    # detections = bbox_sanity_check(img_path)
+    # print("detections", detections)
 
-    # detections = detections
     # print("detections shape", len(detections))
     for box2d in detections:
         # print("box2d====", box2d)
+        box2d = [int(i) for i in box2d]
 
         xmin, ymin, xmax, ymax = box2d
         # xmin, ymin, xmax, ymax = min(abs(xmin), image.shape[1]), min(
@@ -636,15 +638,16 @@ def get_masked_points(img_path, points, mask, detections, pc_image_coord, img_fo
         # new_prob = segmentation_frustum(img_path, box2d, xy, show=False)
         if xmin < 0 or ymin < 0 or xmax > image.shape[1] or ymax > image.shape[0]:
             print("bad bbox", box2d)
-        try:
-            new_prob = segmentation_det(image, xy,
-                                        box2d, segmentation_output_full, prob_per_pixel_full, show=False)
-        except:
-            new_prob = np.exp(-((xy[:, 0] - x0)**2/(0.5*w**2)) -
-                              ((xy[:, 1] - y0)**2/(0.5*h**2)))  # original equation
-            # negative_bbox_count += 1
-            print("negative_bbox\n")
-            print("detections", box2d)
+        # try:
+        # print("negative_bbox\n")
+        # print("detections", box2d)
+        new_prob = segmentation_det(image, xy,
+                                    box2d, segmentation_output_full, prob_per_pixel_full, show=False)
+        # except Exception:
+        # print(Exception.__name__)
+        # new_prob = np.exp(-((xy[:, 0] - x0)**2/(0.5*w**2)) -
+        #                   ((xy[:, 1] - y0)**2/(0.5*h**2)))  # original equation
+        # # negative_bbox_count += 1
         # print("NEW PROB=====================", new_prob.shape)
 
         # exit()
@@ -700,3 +703,7 @@ def get_masked_points(img_path, points, mask, detections, pc_image_coord, img_fo
     #     masked_points = points[mask]
     #     limg = lidar_to_img(masked_points, grid_size, voxel_size = 0.16, fill= 1)
     #     Image.fromarray(limg*255).show()
+
+
+if __name__ == '__main__':
+    car_detector("abc")

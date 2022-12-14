@@ -1,29 +1,23 @@
 import cv2
 import sys
 import csv
-
 # import tensorflow
 import numpy as np
-
 # from second.data.mmsegmentation.mmseg.core.evaluation import get_palette
 # from second.data.mmsegmentation.mmseg.apis import inference_segmentor, init_segmentor, show_result_pyplot
 from mmseg.core.evaluation import get_palette
 from mmseg.apis import inference_segmentor, init_segmentor, show_result_pyplot
 import snoop
-
 # import mmseg
 import torch
 import torchvision
 import pickle
 
 PATH = "/home/vicky/Coding/Projects/Frustum-Pointpillars/second/data/"
-config_file = (
-    PATH + "mmsegmentation/configs/pspnet/pspnet_r50-d8_512x1024_40k_cityscapes.py"
-)
-checkpoint_file = (
-    PATH
-    + "mmsegmentation/checkpoints/pspnet_r50-d8_512x1024_40k_cityscapes_20200605_003338-2966598c.pth"
-)
+#PATH = "/home/jain.van/updated_fp/Frustum-Pointpillars/second/data/"
+config_file = PATH + "mmsegmentation/configs/pspnet/pspnet_r50-d8_512x1024_40k_cityscapes.py"
+checkpoint_file = PATH + \
+    "mmsegmentation/checkpoints/pspnet_r50-d8_512x1024_40k_cityscapes_20200605_003338-2966598c.pth"
 
 model = init_segmentor(config_file, checkpoint_file, device="cuda:0")
 
@@ -58,7 +52,8 @@ def segmentation_full(img):
     #     exit()
 
     # print("img shape", img.shape)
-    segmentation_output_full, prob_per_pixel_full = inference_segmentor(model, img)
+    segmentation_output_full, prob_per_pixel_full = inference_segmentor(
+        model, img)
     segmentation_output_full = np.array(segmentation_output_full).squeeze()
     # print(segmentation_output_full.shape)
     prob_per_pixel_full = (
@@ -71,20 +66,26 @@ def segmentation_full(img):
     return segmentation_output_full, prob_per_pixel_full
 
 
-def segmentation_det(
-    img, xy, bbox, segmentation_output_full, prob_per_pixel_full, show=False
-):
+def segmentation_det(img, xy, bbox, segmentation_output_full, prob_per_pixel_full, show=False):
+    # print("xy,bbox", xy, bbox)
     xmin, ymin, xmax, ymax = bbox
-    segmentation_output, prob_per_pixel = bbox_extract(
-        img, bbox, segmentation_output_full, prob_per_pixel_full
-    )
+    segmentation_output, prob_per_pixel = bbox_extract(img,
+                                                       bbox, segmentation_output_full, prob_per_pixel_full)
     # print("after bbox extraction===",
     #       segmentation_output.shape, prob_per_pixel.shape)
+    # seg_err_removed = segmentation_output(segmentation_output != 255)
     unique_class, count = np.unique(segmentation_output, return_counts=True)
+    count = count[unique_class != 255]
+    unique_class = unique_class[unique_class != 255]
+
     needed_class = unique_class[count == count.max()]
+
+    # print("unique class", unique_class)
+    # print("needed class", needed_class)
     segmentation_output[segmentation_output != needed_class] = 0
     segmentation_output[segmentation_output > 0] = 255
-    output = np.empty((segmentation_output.shape[0], segmentation_output.shape[1], 3))
+    output = np.empty(
+        (segmentation_output.shape[0], segmentation_output.shape[1], 3))
     prob_output = np.empty(
         (segmentation_output.shape[0], segmentation_output.shape[1], 1)
     )
@@ -104,13 +105,13 @@ def segmentation_det(
     # cv2.imwrite("/home/vicky/out_seg.png", output)
 
     l = np.array(
-        [prob_output[xy[:, 1].astype(int) - ymin, xy[:, 0].astype(int) - xmin]]
-    ).squeeze()
+        [prob_output[xy[:, 1].astype(int)-ymin, xy[:, 0].astype(int)-xmin]]).squeeze()
     # print(l)
 
     if show:
         cv2.imshow("segmentation_output", segmentation_output)
-        cv2.imwrite("/home/vicky/segmentation_output1.png", segmentation_output)
+        cv2.imwrite("/home/vicky/segmentation_output1.png",
+                    segmentation_output)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
     # print("done")
@@ -119,16 +120,17 @@ def segmentation_det(
 
 
 if __name__ == "__main__":
-    print("here")
-    img_path = "/media/vicky/Office1/kitti/data/training/image_2/000046.png"
+    # print("here")
+    img_path = '/media/vicky/Office1/kitti/data/training/image_2/004262.png'
     # img_path2 = "/home/vicky/lol.png"
-    bbox = (756, 160, 1097, 358)
-    xy = np.array([[800, 180], [810, 200]])
+    bbox = (710, 174, 817, 248)
+    xy = np.array([[750, 180], [760, 200]])
     img = cv2.imread(img_path)
     # segmentation_full(img, show=True)
-    segmentation_output_full, prob_per_pixel_full = segmentation_full(img)
-    new_prob = segmentation_det(
-        img, bbox, segmentation_output_full, prob_per_pixel_full, show=True
-    )
+    # segmentation_output_full, prob_per_pixel_full = segmentation_full(img)
+    segmentation_output_full, prob_per_pixel_full = segmentation_full(
+        img)
+    new_prob = segmentation_det(img, xy,
+                                bbox, segmentation_output_full, prob_per_pixel_full, show=True)
 
-    segmentation_full(img_path2, bbox, xy, show=True)
+    # segmentation_full(img_path2, bbox, xy, show=True)
