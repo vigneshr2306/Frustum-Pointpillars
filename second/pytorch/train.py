@@ -338,7 +338,7 @@ def train(config_path,
                 # pdb.set_trace()
 
                 ret_dict = net(example_torch)
-
+                print("ret_dict", ret_dict)
                 # box_preds = ret_dict["box_preds"]
                 cls_preds = ret_dict["cls_preds"]
                 loss = ret_dict["loss"].mean()

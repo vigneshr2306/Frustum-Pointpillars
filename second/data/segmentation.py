@@ -5,8 +5,8 @@ import csv
 import numpy as np
 # from second.data.mmsegmentation.mmseg.core.evaluation import get_palette
 # from second.data.mmsegmentation.mmseg.apis import inference_segmentor, init_segmentor, show_result_pyplot
-from mmseg.core.evaluation import get_palette
-from mmseg.apis import inference_segmentor, init_segmentor, show_result_pyplot
+from second.data.mmsegmentation.mmseg.core.evaluation import get_palette
+from second.data.mmsegmentation.mmseg.apis import inference_segmentor, init_segmentor, show_result_pyplot
 import snoop
 # import mmseg
 import torch
