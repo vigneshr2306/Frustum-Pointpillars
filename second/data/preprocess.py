@@ -638,11 +638,11 @@ def get_masked_points(img_path, points, mask, detections, pc_image_coord, img_fo
         # new_prob = segmentation_frustum(img_path, box2d, xy, show=False)
         if xmin < 0 or ymin < 0 or xmax > image.shape[1] or ymax > image.shape[0]:
             print("bad bbox", box2d)
-        # try:
-        # print("negative_bbox\n")
-        # print("detections", box2d)
-        new_prob = segmentation_det(image, xy,
-                                    box2d, segmentation_output_full, prob_per_pixel_full, show=False)
+        try:
+            # print("negative_bbox\n")
+            # print("detections", box2d)
+            new_prob = segmentation_det(image, xy,
+                                        box2d, segmentation_output_full, prob_per_pixel_full, show=False)
         # except Exception:
         # print(Exception.__name__)
         # new_prob = np.exp(-((xy[:, 0] - x0)**2/(0.5*w**2)) -
@@ -651,11 +651,19 @@ def get_masked_points(img_path, points, mask, detections, pc_image_coord, img_fo
         # print("NEW PROB=====================", new_prob.shape)
 
         # exit()
-        cur_prob = points[box_fov_inds, -1]
-        prob_mask = new_prob < cur_prob
-        new_prob[prob_mask] = cur_prob[prob_mask]
-        points[box_fov_inds, -1] = new_prob
+            cur_prob = points[box_fov_inds, -1]
+            # print("current probability", cur_prob, cur_prob.shape)
+            # print("new probability", new_prob, new_prob.shape)
+            prob_mask = new_prob < cur_prob
+            new_prob[prob_mask] = cur_prob[prob_mask]
+        except:
+            new_prob = np.exp(-((xy[:, 0] - x0)**2/(0.5*w**2)) -
+                              ((xy[:, 1] - y0)**2/(0.5*h**2)))  # original equation
+            cur_prob = points[box_fov_inds, -1]
+            prob_mask = new_prob < cur_prob
+            new_prob[prob_mask] = cur_prob[prob_mask]
 
+        points[box_fov_inds, -1] = new_prob
         mask |= box_fov_inds
 
     if np.sum(mask) > 50:  # Change this hack!!

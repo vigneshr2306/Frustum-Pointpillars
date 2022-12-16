@@ -1,46 +1,24 @@
-# Frustum-PointPillars: A Multi-Stage Approach for 3D Object Detection using RGB Camera and LiDAR
- [blog](https://console.paperspace.com/github/gradient-ai/YOLOv7-basketball/NBA.ipynb?file=%2Ftrain.py)
+# SegMask for Frustum PointPillar: A Multi-Sensor Approach for 3D Object Detection
 
-**Authors: Anshul Paigwar, David Sierra-Gonzalez, Ozgur Erkent, Christian Laugier**
 
-<img src="https://github.com/anshulpaigwar/Frustum-Pointpillars/blob/main/doc/teaser.png" alt="drawing" width="400"/><img src="https://github.com/anshulpaigwar/Frustum-Pointpillars/blob/main/doc/mask.png" alt="drawing" width="300"/>
+**Collaborators: Vignesh Ravikumar, Keshav Bharadwaj Vaidyanathan, Vanshika Jain**
 
-## Introduction
-This repository is code release for our GndNet paper published in IEEE International Conference of Computer Vision, ICCV'2021, Workshop on Autonomous Vehicle Vision. [Link](https://openaccess.thecvf.com/content/ICCV2021W/AVVision/papers/Paigwar_Frustum-PointPillars_A_Multi-Stage_Approach_for_3D_Object_Detection_Using_RGB_ICCVW_2021_paper.pdf)
+<img src="https://github.com/vigneshr2306/SegMask-Frustum-Pointpillars/images/arch.png" alt="drawing" width="400"/><img src="https://github.com/vigneshr2306/SegMask-Frustum-Pointpillars/images/arch.png" alt="drawing" width="300"/>
 
-## Abstract
-Accurate 3D object detection is a key part of the perception module for autonomous vehicles. A better understanding of the objects in 3D facilitates better decision-making and path planning. RGB Cameras and LiDAR are the most commonly used sensors in autonomous vehicles for environment perception. Many approaches have shown promising results for 2D detection with RGB Images, but efficiently localizing small objects like pedestrians in the 3D point cloud of large scenes has remained a challenging area of research. We propose a novel method, Frustum-PointPillars, for 3D object detection using LiDAR data. Instead of solely relying on point cloud features, we leverage the mature field of 2D object detection to reduce the search space in the 3D space. Then, we use the Pillar Feature Encoding network for object localization in the reduced point cloud. We also propose a novel approach for masking point clouds to further improve the localization of objects. We train our network on the KITTI dataset and perform experiments to show the effectiveness of our network. On the KITTI test set our method outperforms other multi-sensor SOTA approaches for 3D pedestrian localization (Bird’s Eye View) while achieving a significantly faster runtime of 14 Hz.  
-
-<img src="https://github.com/anshulpaigwar/Frustum-Pointpillars/blob/main/doc/fpp-architecture.png" alt="drawing" width="800"/>
 
 ## Getting Started
 
-We would like to thank authors of PointPillars and SECOND detector. This repository is forked from nutonomy [PointPillars](https://github.com/nutonomy/second.pytorch) and [SECOND](https://github.com/traveller59/second.pytorch) for KITTI object detection.
-
 ### Code Support
-
-ONLY supports python 3.6+, pytorch 1.4 +. Code has only been tested on Ubuntu 18.04.
 
 ### Install
 
 #### 1. Clone code
 
 ```bash
-git clone https://github.com/anshulpaigwar/Frustum-Pointpillars.git
+git clone <repo_name>
 ```
 
 #### 2. Install Python packages
-
-<!-- It is recommend to use the Anaconda package manager.
-
-First, use Anaconda to configure as many packages as possible.
-```bash
-conda create -n pointpillars python=3.7 anaconda
-source activate pointpillars
-conda install shapely pybind11 protobuf scikit-image numba pillow
-conda install pytorch torchvision -c pytorch
-conda install google-sparsehash -c bioconda
-``` -->
 
 You can use pip or Anaconda package manager to install following packages.
 ```bash
@@ -51,10 +29,7 @@ pip install fire tensorboardX shapely pybind11 protobuf scikit-image numba pillo
 Finally, install SparseConvNet. This is not required for PointPillars, but the general SECOND code base expects this
 to be correctly configured. 
 ```bash
-git clone git@github.com:facebookresearch/SparseConvNet.git
-cd SparseConvNet/
-bash build.sh
-# NOTE: if bash build.sh fails, try bash develop.sh instead
+pip install spconv
 ```
 
 Additionally, you may need to install Boost geometry:
@@ -63,20 +38,9 @@ Additionally, you may need to install Boost geometry:
 sudo apt-get install libboost-all-dev
 ```
 
-
-<!-- #### 3. Setup cuda for numba
-
-You need to add following environment variables for numba to ~/.bashrc:
-
-```bash
-export NUMBAPRO_CUDA_DRIVER=/usr/lib/x86_64-linux-gnu/libcuda.so
-export NUMBAPRO_NVVM=/usr/local/cuda/nvvm/lib64/libnvvm.so
-export NUMBAPRO_LIBDEVICE=/usr/local/cuda/nvvm/libdevice
-``` -->
-
 #### 4. PYTHONPATH
 
-Add Frustum-PointPillars/ to your PYTHONPATH.
+Add SegMask-Frustum-PointPillars/ to your PYTHONPATH.
 
 ### Prepare dataset
 
@@ -119,8 +83,8 @@ python create_data.py create_reduced_point_cloud --data_path=KITTI_DATASET_ROOT
 python create_data.py create_groundtruth_database --data_path=KITTI_DATASET_ROOT
 ```
 
-#### 5. Modify config file
-
+#### 5. Modify config file 
+The config file is at ```second/configs/pointpillar/xyres_16.proto```
 The config file needs to be edited to point to the above datasets:
 
 ```bash
@@ -140,13 +104,14 @@ eval_input_reader: {
   kitti_root_path: "KITTI_DATASET_ROOT"
 }
 ```
+6. Download the YOLOv7 pre-trained model from this link: [Link]{https://drive.google.com/file/d/1X1bU06Zj-9-Tl31LQ-Y1FFdYLeuqeXoz/view?usp=sharing}
 
+7. Download the PSPNet pre-trained model from this link: [Link]{https://drive.google.com/file/d/1IbJnD3yDX9ckMXJK3idwE9sX_fIoDnfD/view?usp=sharing}
 
 ### Train
 
 ```bash
-cd ~/second.pytorch/second
-python ./pytorch/train.py train --config_path=./configs/pointpillars/car/xyres_16.proto --model_dir=/path/to/model_dir
+python second/pytorch/train.py train --config_path=second/configs/pointpillars/car/xyres_16.proto --model_dir=/path/to/model_dir
 ```
 
 * If you want to train a new model, make sure "/path/to/model_dir" doesn't exist.
@@ -160,41 +125,22 @@ python ./pytorch/train.py train --config_path=./configs/pointpillars/car/xyres_1
 
 
 ```bash
-cd ~/second.pytorch/second/
-python pytorch/train.py evaluate --config_path= configs/pointpillars/car/xyres_16.proto --model_dir=/path/to/model_dir
+python second/pytorch/train.py evaluate --config_path= second/configs/pointpillars/car/xyres_16.proto --model_dir=/path/to/model_dir
 ```
 
 * Detection result will saved in model_dir/eval_results/step_xxx.
-* By default, results are stored as a result.pkl file. To save as official KITTI label format use --pickle_result=False.
+* The evaluated labels cacn be visualized using Kitti Visualizer [Link]{https://github.com/HengLan/Visualize-KITTI-Objects-in-Videos}
 
 ## Results
-<img src="https://github.com/anshulpaigwar/Frustum-Pointpillars/blob/main/doc/car_det_results.png" alt="drawing" width="800"/>
-<img src="https://github.com/anshulpaigwar/Frustum-Pointpillars/blob/main/doc/ped_det_results.png" alt="drawing" width="800"/>
-
-ICCV workshop presentation: https://www.youtube.com/watch?v=0z7OPPRsqTk
-
-
-## Citation
-
-If you find this project useful in your research, please star this GitHub repository and consider citing our work:
-```
-@INPROCEEDINGS{9607424,
-  author={Paigwar, Anshul and Sierra-Gonzalez, David and Erkent, Özgür and Laugier, Christian},
-  booktitle={2021 IEEE/CVF International Conference on Computer Vision Workshops (ICCVW)}, 
-  title={Frustum-PointPillars: A Multi-Stage Approach for 3D Object Detection using RGB Camera and LiDAR}, 
-  year={2021},
-  pages={2926-2933},
-  doi={10.1109/ICCVW54120.2021.00327}}
-}
-```
-
-## Contribution
-
-We welcome you for contributing to this repo, and feel free to contact us for any potential bugs and issues.
+<img src="https://github.com/vigneshr2306/SegMask-Frustum-Pointpillars/images/img_bbox.png" alt="drawing" width="800"/>
+<img src="https://github.com/vigneshr2306/SegMask-Frustum-Pointpillars/images/3d.png" alt="drawing" width="800"/>
 
 
 ## References
 
-[1] Qi, Charles R., et al. "Pointnet: Deep learning on point sets for 3d classification and segmentation." Proceedings of the IEEE conference on computer vision and pattern recognition. 2017.
+[1] A. Paigwar, D. Sierra-Gonzalez, Ö. Erkent and C. Laugier, "Frustum-PointPillars: A Multi-Stage Approach for 3D Object Detection using RGB Camera and LiDAR," 2021 IEEE/CVF International Conference on Computer Vision Workshops (ICCVW), 2021, pp. 2926-2933, doi: 10.1109/ICCVW54120.2021.00327.
 
 [2] Lang, A. H., Vora, S., Caesar, H., Zhou, L., Yang, J., & Beijbom, O. (2019). Pointpillars: Fast encoders for object detection from point clouds. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (pp. 12697-12705).
+
+[3] Qi, Charles R., et al. "Pointnet: Deep learning on point sets for 3d classification and segmentation." Proceedings of the IEEE conference on computer vision and pattern recognition. 2017.
+

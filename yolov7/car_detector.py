@@ -164,15 +164,16 @@ def car_detector(img):
                     xyxy = list(
                         [int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])]
                     )
-                    # cv2.rectangle(
-                    #     img0,
-                    #     (xyxy[0], xyxy[1]),
-                    #     (xyxy[2], xyxy[3]),
-                    #     (255, 0, 0),
-                    #     1,
-                    #     cv2.LINE_AA,
-                    # )
-                    output.append(xyxy)
+                    if xyxy[0] < 1000:
+                        cv2.rectangle(
+                            img0,
+                            (xyxy[0], xyxy[1]),
+                            (xyxy[2], xyxy[3]),
+                            (255, 0, 0),
+                            5,
+                            cv2.LINE_AA,
+                        )
+                        output.append(xyxy)
         # end = time.time()
         # print("inf_time:", end - start)
 
@@ -180,20 +181,21 @@ def car_detector(img):
 
 
 if __name__ == "__main__":
-    source = "/home/vicky/6.png"
+    source = "/home/vicky/Coding/Projects/Visualize-KITTI-Objects-in-Videos/data/KITTI/image_2/0001/000000.png"
 
     # source = "inference/images/horses.jpg"
     img0 = cv2.imread(source)
     box_plots = car_detector(img0)
     print(box_plots, img0.shape)
-    cv2.rectangle(
-        img0,
-        (548, 171),
-        (572, 194),
-        (0, 255, 0),
-        1,
-        cv2.LINE_AA,
-    )
+    # cv2.rectangle(
+    #     img0,
+    #     (548, 171),
+    #     (572, 194),
+    #     (0, 255, 0),
+    #     1,
+    #     cv2.LINE_AA,
+    # )
     cv2.imshow("val", img0)
+    cv2.imwrite("/home/vicky/yolov7.png", img0)
     cv2.waitKey(0)
     cv2.destroyAllWindows()

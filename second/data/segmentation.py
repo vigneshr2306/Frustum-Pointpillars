@@ -61,7 +61,7 @@ def segmentation_full(img):
     )
     # print("prob full", prob_per_pixel_full.shape)
 
-    # cv2.imwrite("/home/vicky/out_seg.png", segmentation_output)
+    # cv2.imwrite("/home/vicky/out_seg3.png", segmentation_output_full)
     # segmentation_output_full = np.array(segmentation_output_full).squeeze()
     return segmentation_output_full, prob_per_pixel_full
 
@@ -110,7 +110,7 @@ def segmentation_det(img, xy, bbox, segmentation_output_full, prob_per_pixel_ful
     # l = np.array([prob_output[[120, 130, 140, 150], [120, 120, 120, 120]]])
     # print(xy[:, 0], xy[:, 1], xy.shape)
     # astype(int) done as velo projected to camera coordinates are float and indices can't be float
-    # cv2.imwrite("/home/vicky/out_seg.png", output)
+    cv2.imwrite("/home/vicky/man_seg.png", output)
 
     l = np.array(
         [prob_output[xy[:, 1].astype(int)-ymin, xy[:, 0].astype(int)-xmin]]).squeeze()
@@ -129,9 +129,9 @@ def segmentation_det(img, xy, bbox, segmentation_output_full, prob_per_pixel_ful
 
 if __name__ == "__main__":
     # print("here")
-    img_path = '/media/vicky/Office1/kitti/data/training/image_2/004262.png'
-    # img_path2 = "/home/vicky/lol.png"
-    bbox = (710, 174, 817, 248)
+    # img_path = '/home/vicky/Coding/Projects/Visualize-KITTI-Objects-in-Videos/data/KITTI/image_2/0001/000000.png'
+    img_path = "/home/vicky/man.jpeg"
+    bbox = (716, 149, 818, 306)
     xy = np.array([[750, 180], [760, 200]])
     img = cv2.imread(img_path)
     # segmentation_full(img, show=True)
