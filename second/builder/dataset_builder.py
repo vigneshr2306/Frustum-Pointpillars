@@ -35,7 +35,7 @@ def build(input_reader_config,
           training,
           voxel_generator,
           target_assigner=None,
-          ref_dets = None):
+          ref_dets=None):
     """Builds a tensor dictionary based on the InputReader config.
 
     Args:
@@ -101,7 +101,7 @@ def build(input_reader_config,
         remove_environment=cfg.remove_environment,
         use_group_id=cfg.use_group_id,
         out_size_factor=out_size_factor,
-        reference_detections = ref_dets)
+        reference_detections=ref_dets)
     dataset = KittiDataset(
         info_path=cfg.kitti_info_path,
         root_path=cfg.kitti_root_path,

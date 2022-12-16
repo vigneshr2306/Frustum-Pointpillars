@@ -17,8 +17,8 @@ from second.builder import target_assigner_builder, voxel_builder
 from second.data.preprocess import merge_second_batch
 from second.protos import pipeline_pb2
 from second.pytorch.builder import (box_coder_builder, input_reader_builder,
-                                      lr_scheduler_builder, optimizer_builder,
-                                      second_builder)
+                                    lr_scheduler_builder, optimizer_builder,
+                                    second_builder)
 from second.utils.eval import get_coco_eval_result, get_official_eval_result
 from second.utils.progress_bar import ProgressBar
 
@@ -43,19 +43,13 @@ def read_det_file(det_filename):
 
     for i, det_idx in enumerate(id_list):
         if det_idx not in all_boxes_2d:
-            all_boxes_2d[det_idx] = {'names': [], 'bboxes':[], 'prob':[]}
+            all_boxes_2d[det_idx] = {'names': [], 'bboxes': [], 'prob': []}
 
         all_boxes_2d[det_idx]['names'].append(type_list[i])
         all_boxes_2d[det_idx]['bboxes'].append(box2d_list[i])
         all_boxes_2d[det_idx]['prob'].append(prob_list[i])
-
+    # print(box2d_list)
     return all_boxes_2d
-
-
-
-
-
-
 
 
 def remove_low_score(image_anno, thresh):
@@ -99,23 +93,22 @@ def _read_imageset_file(path):
         lines = f.readlines()
     return [int(line) for line in lines]
 
-def read_ref_det_dir(det_dir, imgset_file ):
+
+def read_ref_det_dir(det_dir, imgset_file):
     print("reading detections from the dir:", det_dir)
     imgset = _read_imageset_file(imgset_file)
-    
+
     all_boxes_2d = {}
     thresh = 0.5
     print("removing low score ref det below threshold:", thresh)
     for idx in imgset:
         det_file_path = det_dir + '%06d.txt' % idx
         annotations = get_2d_label_anno(det_file_path)
-        annotations = remove_low_score(annotations, thresh = thresh)
+        annotations = remove_low_score(annotations, thresh=thresh)
         all_boxes_2d[idx] = annotations
         # pdb.set_trace()
 
     return all_boxes_2d
-
-
 
 
 def _get_pos_neg_loss(cls_loss, labels):
@@ -212,12 +205,15 @@ def train(config_path,
     ######################
     # BUILD VOXEL GENERATOR
     ######################
-    voxel_generator = voxel_builder.build(model_cfg.voxel_generator) #voxels: [M, max_points, ndim] float tensor. only contain points.
+    # voxels: [M, max_points, ndim] float tensor. only contain points.
+    voxel_generator = voxel_builder.build(model_cfg.voxel_generator)
     ######################
     # BUILD TARGET ASSIGNER
     ######################
-    bv_range = voxel_generator.point_cloud_range[[0, 1, 3, 4]] #return the range values
-    box_coder = box_coder_builder.build(model_cfg.box_coder) # Type of box 3d or BeV
+    bv_range = voxel_generator.point_cloud_range[[
+        0, 1, 3, 4]]  # return the range values
+    box_coder = box_coder_builder.build(
+        model_cfg.box_coder)  # Type of box 3d or BeV
     target_assigner_cfg = model_cfg.target_assigner
     target_assigner = target_assigner_builder.build(target_assigner_cfg,
                                                     bv_range, box_coder)
@@ -320,6 +316,7 @@ def train(config_path,
         total_loop -= 1
     mixed_optimizer.zero_grad()
     try:
+        # exit()
         for _ in range(total_loop):
             if total_step_elapsed + train_cfg.steps_per_eval > train_cfg.steps:
                 steps = train_cfg.steps % train_cfg.steps_per_eval
@@ -341,7 +338,7 @@ def train(config_path,
                 # pdb.set_trace()
 
                 ret_dict = net(example_torch)
-
+                # print("ret_dict", ret_dict)
                 # box_preds = ret_dict["box_preds"]
                 cls_preds = ret_dict["cls_preds"]
                 loss = ret_dict["loss"].mean()
@@ -435,7 +432,8 @@ def train(config_path,
                                         net.get_global_step())
 
             # Ensure that all evaluation points are saved forever
-            torchplus.train.save_models(eval_checkpoint_dir, [net, optimizer], net.get_global_step(), max_to_keep=100)
+            torchplus.train.save_models(
+                eval_checkpoint_dir, [net, optimizer], net.get_global_step(), max_to_keep=100)
 
             net.eval()
             result_path_step = result_path / f"step_{net.get_global_step()}"
@@ -488,9 +486,12 @@ def train(config_path,
             writer.add_text('eval_result', result, global_step)
 
             for i, class_name in enumerate(class_names):
-                writer.add_scalar('bev_ap:{}'.format(class_name), mAPbev[i, 1, 0], global_step)
-                writer.add_scalar('3d_ap:{}'.format(class_name), mAP3d[i, 1, 0], global_step)
-                writer.add_scalar('aos_ap:{}'.format(class_name), mAPaos[i, 1, 0], global_step)
+                writer.add_scalar('bev_ap:{}'.format(
+                    class_name), mAPbev[i, 1, 0], global_step)
+                writer.add_scalar('3d_ap:{}'.format(
+                    class_name), mAP3d[i, 1, 0], global_step)
+                writer.add_scalar('aos_ap:{}'.format(
+                    class_name), mAPaos[i, 1, 0], global_step)
             writer.add_scalar('bev_map', np.mean(mAPbev[:, 1, 0]), global_step)
             writer.add_scalar('3d_map', np.mean(mAP3d[:, 1, 0]), global_step)
             writer.add_scalar('aos_map', np.mean(mAPaos[:, 1, 0]), global_step)
@@ -698,7 +699,7 @@ def evaluate(config_path,
     elif det_dir:
         imgset_file = "/home/anshul/es3cap/my_codes/frustum_pp/second.pytorch/second/data/ImageSets/test.txt"
         print('using image_set from file:', imgset_file)
-        ref_dets = read_ref_det_dir(det_dir = det_dir, imgset_file = imgset_file)
+        ref_dets = read_ref_det_dir(det_dir=det_dir, imgset_file=imgset_file)
     else:
         ref_dets = None
 
@@ -713,7 +714,7 @@ def evaluate(config_path,
         training=False,
         voxel_generator=voxel_generator,
         target_assigner=target_assigner,
-        ref_dets = ref_dets)
+        ref_dets=ref_dets)
     eval_dataloader = torch.utils.data.DataLoader(
         eval_dataset,
         batch_size=input_cfg.batch_size,
@@ -768,4 +769,6 @@ def evaluate(config_path,
 
 
 if __name__ == '__main__':
+    torch.cuda.empty_cache()
+    torch.multiprocessing.set_start_method('spawn')
     fire.Fire()

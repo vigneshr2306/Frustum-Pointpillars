@@ -3,7 +3,7 @@ from enum import Enum
 from functools import reduce
 
 import numpy as np
-import sparseconvnet as scn
+import spconv as scn
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -15,8 +15,8 @@ from torchplus.ops.array_ops import gather_nd, scatter_nd
 from torchplus.tools import change_default_args
 from second.pytorch.core import box_torch_ops
 from second.pytorch.core.losses import (WeightedSigmoidClassificationLoss,
-                                          WeightedSmoothL1LocalizationLoss,
-                                          WeightedSoftmaxClassificationLoss)
+                                        WeightedSmoothL1LocalizationLoss,
+                                        WeightedSoftmaxClassificationLoss)
 from second.pytorch.models.pointpillars import PillarFeatureNet, PointPillarsScatter
 from second.pytorch.utils import get_paddings_indicator
 
@@ -341,8 +341,10 @@ class RPN(nn.Module):
         assert len(num_upsample_filters) == len(layer_nums)
         factors = []
         for i in range(len(layer_nums)):
-            assert int(np.prod(layer_strides[:i + 1])) % upsample_strides[i] == 0
-            factors.append(np.prod(layer_strides[:i + 1]) // upsample_strides[i])
+            assert int(np.prod(layer_strides[:i + 1])
+                       ) % upsample_strides[i] == 0
+            factors.append(
+                np.prod(layer_strides[:i + 1]) // upsample_strides[i])
         assert all([x == factors[0] for x in factors])
         if use_norm:
             if use_groupnorm:
@@ -665,7 +667,8 @@ class VoxelNet(nn.Module):
         # features: [num_voxels, max_num_points_per_voxel, 7]
         # num_points: [num_voxels]
         # coors: [num_voxels, 4]
-        voxel_features = self.voxel_feature_extractor(voxels, num_points, coors)
+        voxel_features = self.voxel_feature_extractor(
+            voxels, num_points, coors)
         if self._use_sparse_rpn:
             preds_dict = self.sparse_rpn(voxel_features, coors, batch_size_dev)
         else:
@@ -766,7 +769,7 @@ class VoxelNet(nn.Module):
         num_class_with_bg = self._num_class
         if not self._encode_background_as_zeros:
             num_class_with_bg = self._num_class + 1
-
+        
         batch_cls_preds = batch_cls_preds.view(batch_size, -1,
                                                num_class_with_bg)
         batch_box_preds = self._box_coder.decode_torch(batch_box_preds,
@@ -917,7 +920,8 @@ class VoxelNet(nn.Module):
                 label_preds = selected_labels
                 if self._use_direction_classifier:
                     dir_labels = selected_dir_labels
-                    opp_labels = (box_preds[..., -1] > 0) ^ dir_labels.to(torch.bool)
+                    opp_labels = (box_preds[..., -1] >
+                                  0) ^ dir_labels.to(torch.bool)
                     box_preds[..., -1] += torch.where(
                         opp_labels,
                         torch.tensor(np.pi).type_as(box_preds),

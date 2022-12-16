@@ -37,7 +37,8 @@ def get_thresholds(scores: np.ndarray, num_gt, num_sample_pts=41):
 
 
 def clean_data(gt_anno, dt_anno, current_class, difficulty):
-    CLASS_NAMES = ['car', 'pedestrian', 'cyclist', 'van', 'person_sitting', 'car', 'tractor', 'trailer']
+    CLASS_NAMES = ['car', 'pedestrian', 'cyclist', 'van',
+                   'person_sitting', 'car', 'tractor', 'trailer']
     MIN_HEIGHT = [40, 25, 25]
     MAX_OCCLUSION = [0, 1, 2]
     MAX_TRUNCATION = [0.15, 0.3, 0.5]
@@ -692,7 +693,7 @@ def do_eval_v2(gt_annos,
                current_classes,
                min_overlaps,
                compute_aos=False,
-               difficultys = [0, 1, 2]):
+               difficultys=[0, 1, 2]):
     # min_overlaps: [num_minoverlap, metric, num_class]
     ret = eval_class_v3(gt_annos, dt_annos, current_classes, difficultys, 0,
                         min_overlaps, compute_aos)
@@ -898,7 +899,8 @@ def get_coco_eval_result(gt_annos, dt_annos, current_classes):
     current_classes = current_classes_int
     overlap_ranges = np.zeros([3, 3, len(current_classes)])
     for i, curcls in enumerate(current_classes):
-        overlap_ranges[:, :, i] = np.array(class_to_range[curcls])[:, np.newaxis]
+        overlap_ranges[:, :, i] = np.array(
+            class_to_range[curcls])[:, np.newaxis]
     result = ''
     # check whether alpha is valid
     compute_aos = False
@@ -918,16 +920,16 @@ def get_coco_eval_result(gt_annos, dt_annos, current_classes):
             (f"{class_to_name[curcls]} "
                 "coco AP@{:.2f}:{:.2f}:{:.2f}:".format(*o_range)))
         result += print_str((f"bbox AP:{mAPbbox[j, 0]:.2f}, "
-                                f"{mAPbbox[j, 1]:.2f}, "
-                                f"{mAPbbox[j, 2]:.2f}"))
+                             f"{mAPbbox[j, 1]:.2f}, "
+                             f"{mAPbbox[j, 2]:.2f}"))
         result += print_str((f"bev  AP:{mAPbev[j, 0]:.2f}, "
-                                f"{mAPbev[j, 1]:.2f}, "
-                                f"{mAPbev[j, 2]:.2f}"))
+                             f"{mAPbev[j, 1]:.2f}, "
+                             f"{mAPbev[j, 2]:.2f}"))
         result += print_str((f"3d   AP:{mAP3d[j, 0]:.2f}, "
-                                f"{mAP3d[j, 1]:.2f}, "
-                                f"{mAP3d[j, 2]:.2f}"))
+                             f"{mAP3d[j, 1]:.2f}, "
+                             f"{mAP3d[j, 2]:.2f}"))
         if compute_aos:
             result += print_str((f"aos  AP:{mAPaos[j, 0]:.2f}, "
-                                    f"{mAPaos[j, 1]:.2f}, "
-                                    f"{mAPaos[j, 2]:.2f}"))
+                                 f"{mAPaos[j, 1]:.2f}, "
+                                 f"{mAPaos[j, 2]:.2f}"))
     return result

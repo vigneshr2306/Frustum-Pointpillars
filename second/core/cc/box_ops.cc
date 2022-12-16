@@ -1,5 +1,5 @@
 #include "box_ops.h"
-
+#include <boost/geometry/geometries/geometries.hpp>
 PYBIND11_MODULE(box_ops_cc, m) {
   m.doc() = "box ops written by c++";
   m.def("rbbox_iou", &rbbox_iou<double>,

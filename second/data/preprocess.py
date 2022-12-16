@@ -1,23 +1,24 @@
+import cv2
 import pathlib
 import pickle
 import time
 from collections import defaultdict
-
+import snoop
 import numpy as np
 from skimage import io as imgio
-
+# import segmentation_models_pytorch as smp
 from second.core import box_np_ops
 from second.core import preprocess as prep
 from second.core.geometry import points_in_convex_polygon_3d_jit
 from second.core.point_cloud.bev_ops import points_to_bev
 from second.data import kitti_common as kitti
 import numba
-from numba import jit,types
+from numba import jit, types
 from PIL import Image
-
-
-
-
+import torch
+from second.data.segmentation import segmentation_full, segmentation_det
+from second.data.kitti_bbox_sanity_checker import bbox_sanity_check
+from yolov7.car_detector import car_detector
 
 
 def merge_second_batch(batch_list, _unused=False):
@@ -49,6 +50,7 @@ def merge_second_batch(batch_list, _unused=False):
     return ret
 
 
+# @snoop
 def prep_pointcloud(input_dict,
                     root_path,
                     voxel_generator,
@@ -86,13 +88,49 @@ def prep_pointcloud(input_dict,
                     bev_only=False,
                     use_group_id=False,
                     out_dtype=np.float32,
-                    frustum_pp = True,
+                    frustum_pp=True,
                     add_points_to_example=False):
     """convert point cloud to voxels, create targets if ground truths 
     exists.
     """
     points = input_dict["points"]
+    # print("input dict========", input_dict)
+    # exit()
+    local_path = "/media/vicky/Office1/kitti/data/"
+    img_path = local_path + input_dict["image_path"]
+    # print("IMAGE PATH in dict===", input_dict["image_path"])
+    # img_path = "/home/vicky/output.png"
+    # img_path = local_path + img_path
+    # image_path_temp = '/media/vicky/Office1/kitti/data/' + image_path_temp
+    # print("IMAGE PATH", image_path_temp)
+    # img = cv2.imread(image_path_temp)
+    # # cv2.imshow("kitti image", img)
+    # temp_bbox = input_dict["bboxes"][0]
+    # point1 = (int(temp_bbox[0]), int(temp_bbox[1]))
+    # point2 = (int(temp_bbox[2]), int(temp_bbox[3]))
+    # # print("point1=====", point1)
+    # print("point1=====", point2)
+    # print("IMAGE============")
+    # print(img)
+    # cv2.imshow("img", img)
 
+    # img = cv2.circle(img, point1, 1, (255, 0, 0), 2)
+    # img = cv2.rectangle(img, point1, point2, (255, 0, 0), 2)
+    # cv2.imshow("img2", img)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+
+    # cv2.imwrite('/home/vicky/output.png', img)
+    # seg_mask = seg_model(torch.from_numpy(img))
+    # print(seg_mask)
+    # seg_mask2 = seg_mask.numpy()
+    # cv2.imwrite('/home/vicky/output_seg.png', seg_mask2)
+    # print("done saving")
+
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    # exit()
+    # print(input_dict)
     if training:
         gt_boxes = input_dict["gt_boxes"]
         gt_names = input_dict["gt_names"]
@@ -105,7 +143,6 @@ def prep_pointcloud(input_dict,
     Trv2c = input_dict["Trv2c"]
     P2 = input_dict["P2"]
     unlabeled_training = unlabeled_db_sampler is not None
-
 
     if remove_outside_points and not lidar_input:
         image_shape = input_dict["image_shape"]
@@ -120,13 +157,9 @@ def prep_pointcloud(input_dict,
             group_ids = group_ids[selected]
         points = prep.remove_points_outside_boxes(points, gt_boxes)
 
-
-
-
-
     if frustum_pp and not training:
-        m = np.zeros((points.shape[0],1)) # add extra feature to point cloud
-        points = np.concatenate((points,m), axis=1)
+        m = np.zeros((points.shape[0], 1))  # add extra feature to point cloud
+        points = np.concatenate((points, m), axis=1)
         if reference_detections:
             frame_det_dict = reference_detections.get(image_idx, None)
             if frame_det_dict:
@@ -139,35 +172,33 @@ def prep_pointcloud(input_dict,
             else:
                 ref_bboxes = []
                 print("ref_bboxes is none for image_idx:", image_idx)
-        else: #use input detections
+        else:  # use input detections
             ref_bboxes = input_dict["bboxes"]
             gt_names = input_dict["gt_names"]
-            gt_boxes_mask = np.array([n in class_names for n in gt_names], dtype=np.bool_)
+            gt_boxes_mask = np.array(
+                [n in class_names for n in gt_names], dtype=np.bool_)
             ref_bboxes = ref_bboxes[gt_boxes_mask]
-
-
-
 
         image_shape = input_dict["image_shape"]
         img_height, img_width = image_shape
 
         pc_image_coord, img_fov_inds = box_np_ops.get_lidar_in_image_fov(points[:, 0:3], rect, Trv2c, P2,
-                                                                0, 0, img_width, img_height, 2.5)
+                                                                         0, 0, img_width, img_height, 2.5)
 
         # gt_box3d_camera = box_np_ops.box_lidar_to_camera(ref_bboxes, rect, Trv2c)
         # detections = box_np_ops.box3d_to_bbox(gt_box3d_camera, rect, Trv2c, P2)
 
         mask = np.zeros(points.shape[0], dtype=bool)
-        points = get_masked_points(points, mask, ref_bboxes, pc_image_coord, img_fov_inds)
+        points = get_masked_points(img_path,
+                                   points, mask, ref_bboxes, pc_image_coord, img_fov_inds)
 
-        if len(points) == 0 : #Change this hack!!
-            points = np.zeros((100,5))
-        elif len(points) < 50 : #Change this hack!!
+        if len(points) == 0:  # Change this hack!!
+            points = np.zeros((100, 5))
+        elif len(points) < 50:  # Change this hack!!
             temp = points
-            points = np.zeros((100,5))
+            points = np.zeros((100, 5))
             points[:len(temp)] = temp
             # points = np.tile(points,(int(50/len(points)) + 1, 1))
-
 
         # # detections = bboxes[gt_boxes_mask]
 
@@ -227,19 +258,8 @@ def prep_pointcloud(input_dict,
     #             points = masked_points
     #         # print(points.shape)
 
-
-
-
-
-
-
-
-
-
-
-
     if training:
-                # print(gt_names)
+        # print(gt_names)
         selected = kitti.drop_arrays_by_name(gt_names, ["DontCare"])
         gt_boxes = gt_boxes[selected]
         gt_names = gt_names[selected]
@@ -319,13 +339,8 @@ def prep_pointcloud(input_dict,
         gt_boxes = gt_boxes[gt_boxes_mask]
         gt_names = gt_names[gt_boxes_mask]
 
-
-
-
-
-
-        m = np.zeros((points.shape[0],1)) # add extra feature to point cloud
-        points = np.concatenate((points,m), axis=1)
+        m = np.zeros((points.shape[0], 1))  # add extra feature to point cloud
+        points = np.concatenate((points, m), axis=1)
         # print(points.shape)
 
         if frustum_pp:
@@ -333,10 +348,12 @@ def prep_pointcloud(input_dict,
             img_height, img_width = image_shape
 
             pc_image_coord, img_fov_inds = box_np_ops.get_lidar_in_image_fov(points[:, 0:3], rect, Trv2c, P2,
-                                                                    0, 0, img_width, img_height, 2.5)
+                                                                             0, 0, img_width, img_height, 2.5)
 
-            gt_box3d_camera = box_np_ops.box_lidar_to_camera(gt_boxes, rect, Trv2c)
-            detections = box_np_ops.box3d_to_bbox(gt_box3d_camera, rect, Trv2c, P2)
+            gt_box3d_camera = box_np_ops.box_lidar_to_camera(
+                gt_boxes, rect, Trv2c)
+            detections = box_np_ops.box3d_to_bbox(
+                gt_box3d_camera, rect, Trv2c, P2)
             # agument 2d bounding box to get better generalisation
             # The object are placed even outside the camera fov in pp augumentation code so random shift 2d box code cliping removed.
 
@@ -345,10 +362,10 @@ def prep_pointcloud(input_dict,
             # detections = [box_np_ops.random_shift_box2d(bbox, img_height, img_width, 0.1) for bbox in detections]
             # detections = np.atleast_2d(np.array(detections))
 
-
             mask = np.zeros(points.shape[0], dtype=bool)
 
-            points = get_masked_points(points, mask, detections, pc_image_coord, img_fov_inds)
+            points = get_masked_points(
+                img_path, points, mask, detections, pc_image_coord, img_fov_inds)
 
             # if len(points) == 0 : #Change this hack!!
             #     points = np.zeros((100,5))
@@ -356,7 +373,6 @@ def prep_pointcloud(input_dict,
             #     temp = points
             #     points = np.zeros((100,5))
             #     points[:len(temp)] = temp
-
 
             # grid_size = np.array([0, -39.68, 69.12, 39.68])
             # limg = lidar_to_img(points.copy(), grid_size, voxel_size = 0.16, fill= 1)
@@ -366,14 +382,10 @@ def prep_pointcloud(input_dict,
             # Image.fromarray(limg*255).show()
             # pdb.set_trace()
 
-
         # if frustum_pp:
         #     # print("HERE")
         #     gt_box3d_camera = box_np_ops.box_lidar_to_camera(gt_boxes, rect, Trv2c)
         #     detections = box_np_ops.box3d_to_bbox(gt_box3d_camera, rect, Trv2c, P2)
-            
-
-
 
         #     if len(detections) != 0:
         #         C, R, T = box_np_ops.projection_matrix_to_CRT_kitti(P2)
@@ -385,9 +397,6 @@ def prep_pointcloud(input_dict,
         #         surfaces = box_np_ops.corner_to_surfaces_3d_jit(frustums)
         #         masks = points_in_convex_polygon_3d_jit(points, surfaces)
         #         points = points[masks.any(-1)]
-
-
-
 
         if group_ids is not None:
             group_ids = group_ids[gt_boxes_mask]
@@ -401,7 +410,8 @@ def prep_pointcloud(input_dict,
                                                   *global_scaling_noise)
 
         # Global translation
-        gt_boxes, points = prep.global_translate(gt_boxes, points, global_loc_noise_std)
+        gt_boxes, points = prep.global_translate(
+            gt_boxes, points, global_loc_noise_std)
 
         bv_range = voxel_generator.point_cloud_range[[0, 1, 3, 4]]
         mask = prep.filter_gt_box_outside_range(gt_boxes, bv_range)
@@ -413,9 +423,6 @@ def prep_pointcloud(input_dict,
         # limit rad to [-pi, pi]
         gt_boxes[:, 6] = box_np_ops.limit_period(
             gt_boxes[:, 6], offset=0.5, period=2 * np.pi)
-
-
-
 
     if shuffle_points:
         # shuffle is a little slow.
@@ -444,7 +451,7 @@ def prep_pointcloud(input_dict,
 
     if add_points_to_example:
         example.update({
-        'points': points
+            'points': points
         })
     # if not lidar_input:
     feature_map_size = grid_size[:2] // out_size_factor
@@ -561,52 +568,63 @@ def _read_and_prep_v9(info, root_path, num_point_features, prep_func):
     return example
 
 
-
-
-
-
-
-
-
 @jit(nopython=True)
 def lidar_to_img(points, grid_size, voxel_size, fill):
     # pdb.set_trace()
-    lidar_data = points[:, :2] # neglecting the z co-ordinate
+    lidar_data = points[:, :2]  # neglecting the z co-ordinate
     # height_data = points[:, 2] + 1.732
     # pdb.set_trace()
     lidar_data -= np.array([grid_size[0], grid_size[1]])
-    lidar_data = lidar_data /voxel_size # multiplying by the resolution
+    lidar_data = lidar_data / voxel_size  # multiplying by the resolution
     lidar_data = np.floor(lidar_data)
     lidar_data = lidar_data.astype(np.int32)
     # lidar_data = np.reshape(lidar_data, (-1, 2))
     voxelmap_shape = (grid_size[2:]-grid_size[:2])/voxel_size
-    lidar_img = np.zeros((int(voxelmap_shape[0]),int(voxelmap_shape[1])))
+    lidar_img = np.zeros((int(voxelmap_shape[0]), int(voxelmap_shape[1])))
     N = lidar_data.shape[0]
     for i in range(N):
-        if (0 < lidar_data[i,0] < lidar_img.shape[0]) and (0 < lidar_data[i,1] < lidar_img.shape[1]):
-            if lidar_img[lidar_data[i,0],lidar_data[i,1]] < lidar_data[i,4]:
-                lidar_img[lidar_data[i,0],lidar_data[i,1]] = lidar_data[i,4]
+        if (0 < lidar_data[i, 0] < lidar_img.shape[0]) and (0 < lidar_data[i, 1] < lidar_img.shape[1]):
+            if lidar_img[lidar_data[i, 0], lidar_data[i, 1]] < lidar_data[i, 4]:
+                lidar_img[lidar_data[i, 0],
+                          lidar_data[i, 1]] = lidar_data[i, 4]
 
     return lidar_img
-
 
 
 # def gauss_func(x0, y0, h, w, xy):
 #     prob = np.exp(-((xy[:,0] - x0)**2/(0.5*w**2)) - ((xy[:,1] - y0)**2/(0.5*h**2) ))
 #     return prob
 
-
-
 # @jit(nopython=True)
-def get_masked_points(points, mask, detections, pc_image_coord, img_fov_inds = None):
+
+
+# @snoop
+def get_masked_points(img_path, points, mask, detections, pc_image_coord, img_fov_inds=None):
     # mask = np.zeros(points.shape[0], dtype=bool)
+    image = cv2.imread(img_path)
+    detections = car_detector(image)
+    # print("img_path", img_path)
+    # cv2.imwrite("/home/vicky/out.png", image)
+    segmentation_output_full, prob_per_pixel_full = segmentation_full(
+        image)
+    # detections = bbox_sanity_check(img_path)
+    # print("detections", detections)
+
+    # print("detections shape", len(detections))
     for box2d in detections:
-        # print("here")
+        # print("box2d====", box2d)
+        box2d = [int(i) for i in box2d]
+
         xmin, ymin, xmax, ymax = box2d
+        # xmin, ymin, xmax, ymax = min(abs(xmin), image.shape[1]), min(
+        #     abs(ymin), image.shape[0]), min(abs(xmax), image.shape[1]), min(abs(ymax), image.shape[0])
+
+        # print(xmin, ymin, xmax, ymax)
+        # exit()
         w = xmax-xmin
         h = ymax-ymin
-        x0 =(xmax+xmin)/2
-        y0 =(ymax+ymin)/2
+        x0 = (xmax+xmin)/2
+        y0 = (ymax+ymin)/2
 
         box_fov_inds = (pc_image_coord[:, 0] < xmax) & \
                        (pc_image_coord[:, 0] >= xmin) & \
@@ -615,24 +633,45 @@ def get_masked_points(points, mask, detections, pc_image_coord, img_fov_inds = N
         box_fov_inds = box_fov_inds & img_fov_inds
         xy = pc_image_coord[box_fov_inds]
         # new_prob = np.exp(-((((xy[:,0] - x0)/w)**4) + ((xy[:,1] - y0)/h)**4 ))
-        new_prob = np.exp(-((xy[:,0] - x0)**2/(0.5*w**2)) - ((xy[:,1] - y0)**2/(0.5*h**2) )) #### original equation
-        # print(prob)
-        cur_prob = points[box_fov_inds, -1]
-        prob_mask = new_prob < cur_prob
-        new_prob[prob_mask] = cur_prob[prob_mask]
+       # print("IMAGE PATH===", img_path)
+        # exit()
+        # new_prob = segmentation_frustum(img_path, box2d, xy, show=False)
+        if xmin < 0 or ymin < 0 or xmax > image.shape[1] or ymax > image.shape[0]:
+            print("bad bbox", box2d)
+        try:
+            # print("negative_bbox\n")
+            # print("detections", box2d)
+            new_prob = segmentation_det(image, xy,
+                                        box2d, segmentation_output_full, prob_per_pixel_full, show=False)
+        # except Exception:
+        # print(Exception.__name__)
+        # new_prob = np.exp(-((xy[:, 0] - x0)**2/(0.5*w**2)) -
+        #                   ((xy[:, 1] - y0)**2/(0.5*h**2)))  # original equation
+        # # negative_bbox_count += 1
+        # print("NEW PROB=====================", new_prob.shape)
+
+        # exit()
+            cur_prob = points[box_fov_inds, -1]
+            # print("current probability", cur_prob, cur_prob.shape)
+            # print("new probability", new_prob, new_prob.shape)
+            prob_mask = new_prob < cur_prob
+            new_prob[prob_mask] = cur_prob[prob_mask]
+        except:
+            new_prob = np.exp(-((xy[:, 0] - x0)**2/(0.5*w**2)) -
+                              ((xy[:, 1] - y0)**2/(0.5*h**2)))  # original equation
+            cur_prob = points[box_fov_inds, -1]
+            prob_mask = new_prob < cur_prob
+            new_prob[prob_mask] = cur_prob[prob_mask]
+
         points[box_fov_inds, -1] = new_prob
-        
         mask |= box_fov_inds
 
-    if np.sum(mask) > 50 : #Change this hack!!
+    if np.sum(mask) > 50:  # Change this hack!!
         points = points[mask]
 
     # points = points[mask]
-        
+
     return points
-
-
-
 
 
 # @jit(nopython=True)
@@ -649,7 +688,6 @@ def get_masked_points(points, mask, detections, pc_image_coord, img_fov_inds = N
 #         box_fov_inds = box_fov_inds & img_fov_inds
 #         mask |= box_fov_inds
 #     return mask
-
 
     # if frustum_pp:
     #     image_shape = input_dict["image_shape"]
@@ -670,7 +708,10 @@ def get_masked_points(points, mask, detections, pc_image_coord, img_fov_inds = N
     #     limg = lidar_to_img(points.copy(), grid_size, voxel_size = 0.16, fill= 1)
     #     Image.fromarray(limg*255).show()
 
-
     #     masked_points = points[mask]
     #     limg = lidar_to_img(masked_points, grid_size, voxel_size = 0.16, fill= 1)
     #     Image.fromarray(limg*255).show()
+
+
+if __name__ == '__main__':
+    car_detector("abc")

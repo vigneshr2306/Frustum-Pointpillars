@@ -99,5 +99,5 @@ if __name__ == '__main__':
 
     ref_det_file = sys.argv[1]
     results_dir = sys.argv[2]
-
+    
     write_kitti_labels(ref_det_file, Path(results_dir))
